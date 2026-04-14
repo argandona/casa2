@@ -28,7 +28,7 @@
 
 <!-- Filtros compactos -->
 <div class="bg-white rounded-lg shadow p-4 mb-4">
-    <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-2">
+    <form method="GET" class="grid grid-cols-1 md:grid-cols-6 gap-2">
         <!-- Buscar -->
         <div>
             <label class="block text-xs font-medium text-gray-600 mb-1">Buscar</label>
@@ -70,6 +70,15 @@
                 {% endfor %}
             </select>
         </div>
+
+
+        <div>
+    <label class="block text-xs font-medium text-gray-600 mb-1">Obs. LDS</label>
+    <input type="text" name="obs_lds"
+           value="{{ obs_lds_filter }}"
+           placeholder="Buscar obs. LDS..."
+           class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
+</div>
         
         <!-- Botones -->
         <div class="flex items-end space-x-1">

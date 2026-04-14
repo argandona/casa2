@@ -318,6 +318,7 @@ def suministro_list(request):
     distrito_filter = request.GET.get('distrito', '')
     estado_filter = request.GET.get('estado', '')
     search = request.GET.get('search', '')
+    obs_lds_filter = request.GET.get('obs_lds', '')
 
     todas_sst = SST.objects.select_related('distrito', 'estado_sst').order_by('sst')
 
@@ -344,6 +345,10 @@ def suministro_list(request):
             Q(medidor__icontains=search) |
             Q(direccion__icontains=search)
         )
+    if obs_lds_filter:
+        suministros = suministros.filter(
+            Observacion_LDS__icontains=obs_lds_filter
+    )    
 
     # 🔹 Paginación (DESPUÉS de filtros)
     paginator = Paginator(suministros, 50)
@@ -404,6 +409,7 @@ def suministro_list(request):
                         + suministros_por_estado.get('Ejecutado', 0),
 
         'total_suministros': suministros.count(),
+        'obs_lds_filter': obs_lds_filter,
     }
 
     return render(request, 'gestion/suministros.html', context)

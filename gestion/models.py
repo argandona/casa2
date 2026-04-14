@@ -378,7 +378,7 @@ class Suministro(models.Model):
     estado_suministro = models.ForeignKey('EstadoSuministro', on_delete=models.PROTECT, null=True, blank=True, verbose_name="Estado Suministro")
     observacion_cliente = models.TextField(blank=True, null=True)
     observacion_contratista = models.TextField(blank=True, null=True)
-    #Observación_LDS=models.TextField(blank=True, null=True)
+    Observación_LDS=models.TextField(blank=True, null=True)
     
 
     # Campos específicos para suministros adicionales

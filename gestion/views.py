@@ -856,6 +856,7 @@ def descargar_excel_suministros(request):
                 'FECHA_EJECUCIÓN': s.fecha_ejecucion.strftime('%d/%m/%Y') if s.fecha_ejecucion else '',
                 'EJECUTADO_POR': s.ejecutado_por or '',
                 'OBSERVACIÓN_CONTRATISTA': s.observacion_contratista or '',
+                'OBSERVACIÓN_LDS': s.Observacion_LDS or '',  # 👈 agregar esto
                 'MOTIVO_ADICIONAL': s.motivo_adicional or '',
                 'FECHA_IDENTIFICACIÓN': s.fecha_identificacion.strftime('%d/%m/%Y') if s.fecha_identificacion else '',
                 'SOLICITADO_POR': s.solicitado_por or '',

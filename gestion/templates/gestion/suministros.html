@@ -406,6 +406,9 @@
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distrito</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Ejec.</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ejecutado Por</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+    Obs. LDS
+</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
     </tr>
 </thead>
@@ -455,6 +458,9 @@
         {{ suministro.fecha_ejecucion|date:"d/m/Y"|default:"-" }}
     </td>
     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ suministro.ejecutado_por|default:"-" }}</td>
+    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+    {{ suministro.observacion_lds|default:"-"|truncatechars:30 }}
+</td>
     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
         <button onclick="abrirModalEditar(
             {{ suministro.id }}, 

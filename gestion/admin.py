@@ -120,7 +120,7 @@ class SuministroAdmin(admin.ModelAdmin):
             'fields': ('contacto', 'telefono')
         }),
         ('Estado y Observaciones', {
-            'fields': ('estado_suministro', 'observacion_cliente', 'observacion_contratista')
+            'fields': ('estado_suministro', 'observacion_cliente', 'observacion_contratista','Observacion_LDS')
         }),
     )
 

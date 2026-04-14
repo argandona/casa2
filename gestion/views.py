@@ -234,7 +234,7 @@ def cargar_excel_suministros(request):
                                     suministro_existente.ejecutado_por = ejecutado_por
                                     suministro_existente.estado_suministro = estado_sum
                                     suministro_existente.observacion_contratista = observacion_contratista
-                                    suministro_existente.observacion_lds = observacion_lds
+                                    suministro_existente.Observacion_LDS = observacion_lds
                                     suministro_existente.save()
                                     suministros_actualizados += 1
                                 else:
@@ -261,7 +261,7 @@ def cargar_excel_suministros(request):
                                         fecha_ejecucion=fecha_ejecucion,
                                         ejecutado_por=ejecutado_por,
                                         estado_suministro=estado_sum,
-                                        observacion_lds=observacion_lds,
+                                        Observacion_LDS=observacion_lds,
                                         observacion_contratista=observacion_contratista
                                     )
                                     suministros_creados += 1

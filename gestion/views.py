@@ -80,6 +80,7 @@ def cargar_excel_suministros(request):
                 'LATITUD': 'Latitud',
                 'LONGITUD': 'Longitud',
                 'OBSERVACION_CONTRATISTA': 'Observación Contratista',
+                #'Observación_LDS':'Observación LDS',
                 'ESTADO': 'Estado',
             }
             

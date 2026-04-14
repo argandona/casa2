@@ -153,6 +153,7 @@ def cargar_excel_suministros(request):
                         for index, row in suministros_ot.iterrows():
                             try:
                                 # Extraer datos
+                                
                                 item = int(row['Item']) if pd.notna(row['Item']) else 0
                                 no_ot = str(row['No. OT']).strip() if pd.notna(row['No. OT']) else ''
                                 suministro_codigo = str(row['Suministro']).strip() if pd.notna(row['Suministro']) else ''
@@ -162,6 +163,7 @@ def cargar_excel_suministros(request):
                                 potencia = str(row['Potencia']).strip() if pd.notna(row['Potencia']) else None
                                 direccion = str(row['Dirección']).strip() if pd.notna(row['Dirección']) else ''
                                 distrito_nombre = str(row['Distrito']).strip() if pd.notna(row['Distrito']) else ''
+                                observacion_lds = str(row.get('Observación LDS', '')).strip() if pd.notna(row.get('Observación LDS')) else None
                                 
                                 # Datos adicionales
                                 latitud = row.get('Latitud')
@@ -232,6 +234,7 @@ def cargar_excel_suministros(request):
                                     suministro_existente.ejecutado_por = ejecutado_por
                                     suministro_existente.estado_suministro = estado_sum
                                     suministro_existente.observacion_contratista = observacion_contratista
+                                    suministro_existente.observacion_lds = observacion_lds
                                     suministro_existente.save()
                                     suministros_actualizados += 1
                                 else:
@@ -258,6 +261,7 @@ def cargar_excel_suministros(request):
                                         fecha_ejecucion=fecha_ejecucion,
                                         ejecutado_por=ejecutado_por,
                                         estado_suministro=estado_sum,
+                                        observacion_lds=observacion_lds,
                                         observacion_contratista=observacion_contratista
                                     )
                                     suministros_creados += 1

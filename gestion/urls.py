@@ -26,6 +26,9 @@ urlpatterns = [
     path('liquidacion/<int:sst_id>/cambiar-estado/', views.cambiar_estado_liquidacion, name='cambiar_estado_liquidacion'),
     path('liquidacion/<int:sst_id>/actualizar-observacion/', views.actualizar_observacion_liquidacion, name='actualizar_observacion_liquidacion'),
 
+     path('liquidacion/descargar-excel/', views.descargar_excel_liquidacion, name='descargar_excel_liquidacion'),
+
+
     #path('dashboard/', views.dashboard, name='dashboard'),
     #path('', views.dashboard, name='dashboard_home'), 
 ]

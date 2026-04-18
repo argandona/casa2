@@ -1788,3 +1788,50 @@ def actualizar_observacion_liquidacion(request, sst_id):
     sst.observacion = observacion
     sst.save()
     return JsonResponse({'success': True})    
+
+
+
+@login_required
+def descargar_excel_liquidacion(request):
+    from openpyxl import Workbook
+    from django.http import HttpResponse
+    from datetime import datetime
+
+    ssts = SST.objects.select_related(
+        'estado_sst', 'estado_liquidacion', 'distrito'
+    ).filter(estado_sst__estado='EJECUTADO').order_by('-created_at')
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Liquidación"
+
+    headers = ['SST', 'Distrito', 'Estado SST', 'Estado Liquidación',
+               'Fecha Liq. Sistema', 'Monto Proyectado', 'Monto Real',
+               'Ejecutado Por', 'Obs. Contratista', 'Observación']
+    ws.append(headers)
+
+    for sst in ssts:
+        suministros = sst.suministros.all()
+        ejecutados_por = ', '.join(filter(None, suministros.values_list('ejecutado_por', flat=True).distinct()))
+        obs_contratista = ', '.join(filter(None, suministros.values_list('observacion_contratista', flat=True).distinct()))
+
+        ws.append([
+            sst.sst,
+            sst.distrito.nombre_distrito if sst.distrito else '',
+            sst.estado_sst.estado if sst.estado_sst else '',
+            sst.estado_liquidacion.estado if sst.estado_liquidacion else '',
+            sst.fecha_liquidacion_sistema.strftime('%d/%m/%Y') if sst.fecha_liquidacion_sistema else '',
+            float(sst.monto_proyectado or 0),
+            float(sst.monto_real or 0),
+            ejecutados_por,
+            obs_contratista,
+            sst.observacion or '',
+        ])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f"liquidacion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response

@@ -1706,3 +1706,9 @@ def generar_colores_distintos(n):
         )
         colores.append(hex_color)
     return colores       
+
+
+
+
+def liquidacion_list(request):
+    return render(request, 'gestion/liquidacion_list.html', {})

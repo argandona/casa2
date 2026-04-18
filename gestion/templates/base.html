@@ -94,7 +94,11 @@
                             <i class="fas fa-tools nav-link-icon mr-2"></i>
                             <span class="nav-link-text">Suministros</span>
                         </a>
-                        
+                        <a href="{% url 'liquidacion_list' %}" 
+   class="px-4 py-2 text-sm font-medium rounded-lg flex items-center {% if 'liquidacion' in request.resolver_match.url_name %}bg-blue-50 text-blue-600{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+    <i class="fas fa-file-invoice-dollar nav-link-icon mr-2"></i>
+    <span class="nav-link-text">Control de Liquidación</span>
+</a>
                         <div class="relative group">
                             <button class="px-4 py-2 text-sm font-medium rounded-lg flex items-center text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-users nav-link-icon mr-2"></i>
@@ -265,6 +269,11 @@
                             <i class="fas fa-tools mr-3 text-lg text-gray-500"></i>
                             <span>Suministros</span>
                         </a>
+
+                        <a href="{% url 'liquidacion_list' %}" class="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg">
+    <i class="fas fa-file-invoice-dollar mr-3 text-lg text-gray-500"></i>
+    <span>Control de Liquidación</span>
+</a>
 
                         <a href="{% url 'mapa_suministros' %}" class="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg">
     <i class="fas fa-map-marked-alt mr-3 text-lg text-gray-500"></i>

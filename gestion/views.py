@@ -1753,9 +1753,10 @@ from django.views.decorators.http import require_POST
 
 
 @csrf_exempt
-
 @require_POST
 def cambiar_estado_liquidacion(request, sst_id):
+    print("POST data:", request.POST)
+    print("estado_liquidacion_id:", request.POST.get('estado_liquidacion_id'))
     sst = get_object_or_404(SST, id=sst_id)
     estado_id = request.POST.get('estado_liquidacion_id')
     estado = get_object_or_404(EstadoLiquidacion, id=estado_id)

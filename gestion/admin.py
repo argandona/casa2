@@ -3,7 +3,7 @@ from .models import (
     Insumos, UnidadTransporte, CargoEmpleado, Actividad, Distrito,
     TipoIdentificacion, Epp, EstadoSST, EstadoSuministro, SST,
     Suministro, Empleado, HistorialSueldo, EmpleadoEpp,
-    ProgramacionPersonalSST, SSTInsumo, ProgramacionTransporteSST
+    ProgramacionPersonalSST, SSTInsumo, ProgramacionTransporteSST,EstadoLiquidacion
 )
 
 
@@ -179,3 +179,9 @@ class ProgramacionTransporteSSTAdmin(admin.ModelAdmin):
     list_filter = ('estado', 'fecha')
     search_fields = ('sst__sst', 'nombre_transporte__nombre_transporte')
     date_hierarchy = 'fecha'
+    
+    
+@admin.register(EstadoLiquidacion)
+class EstadoLiquidacionAdmin(admin.ModelAdmin):
+    list_display = ['estado', 'descripcion', 'color']
+    search_fields = ['estado']    

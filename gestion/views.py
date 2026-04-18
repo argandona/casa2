@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
-from .models import SST, Suministro, Distrito, EstadoSST, EstadoSuministro
+from .models import SST, Suministro, Distrito, EstadoSST, EstadoSuministro, EstadoLiquidacion
 import pandas as pd
 from decimal import Decimal
 from django.db import models as django_models

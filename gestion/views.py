@@ -1755,14 +1755,18 @@ from django.views.decorators.http import require_POST
 @csrf_exempt
 @require_POST
 def cambiar_estado_liquidacion(request, sst_id):
-    print("POST data:", request.POST)
-    print("estado_liquidacion_id:", request.POST.get('estado_liquidacion_id'))
-    sst = get_object_or_404(SST, id=sst_id)
-    estado_id = request.POST.get('estado_liquidacion_id')
-    estado = get_object_or_404(EstadoLiquidacion, id=estado_id)
-    sst.estado_liquidacion = estado
-    sst.save()
-    return JsonResponse({'success': True, 'estado': estado.estado, 'color': estado.color})
+    try:
+        print("POST data:", request.POST)
+        sst = get_object_or_404(SST, id=sst_id)
+        estado_id = request.POST.get('estado_liquidacion_id')
+        estado = get_object_or_404(EstadoLiquidacion, id=estado_id)
+        sst.estado_liquidacion = estado
+        sst.save()
+        return JsonResponse({'success': True, 'estado': estado.estado, 'color': estado.color})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @csrf_exempt

@@ -1709,6 +1709,13 @@ def generar_colores_distintos(n):
 
 
 
-
 def liquidacion_list(request):
-    return render(request, 'gestion/liquidacion_list.html', {})
+    ssts = SST.objects.select_related(
+        'estado_sst', 
+        'estado_liquidacion', 
+        'distrito'
+    ).all().order_by('-created_at')
+    
+    return render(request, 'gestion/liquidacion_list.html', {
+        'ssts': ssts,
+    })

@@ -1709,13 +1709,61 @@ def generar_colores_distintos(n):
 
 
 
+from django.db.models import Value
+from django.db.models.functions import Coalesce
+
 def liquidacion_list(request):
     ssts = SST.objects.select_related(
-        'estado_sst', 
-        'estado_liquidacion', 
+        'estado_sst',
+        'estado_liquidacion',
         'distrito'
-    ).all().order_by('-created_at')
-    
+    ).prefetch_related(
+        'suministros'
+    ).filter(
+        estado_sst__estado='EJECUTADO'
+    ).order_by('-created_at')
+
+    # Agregar ejecutado_por y observacion_contratista de suministros
+    ssts_data = []
+    for sst in ssts:
+        suministros = sst.suministros.all()
+        
+        ejecutados_por = ', '.join(
+            filter(None, suministros.values_list('ejecutado_por', flat=True).distinct())
+        )
+        observaciones_contratista = ', '.join(
+            filter(None, suministros.values_list('observacion_contratista', flat=True).distinct())
+        )
+        
+        ssts_data.append({
+            'sst': sst,
+            'ejecutados_por': ejecutados_por,
+            'observaciones_contratista': observaciones_contratista,
+        })
+
+    estados_liquidacion = EstadoLiquidacion.objects.all()
+
     return render(request, 'gestion/liquidacion_list.html', {
-        'ssts': ssts,
+        'ssts_data': ssts_data,
+        'estados_liquidacion': estados_liquidacion,
     })
+    
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+
+@require_POST
+def cambiar_estado_liquidacion(request, sst_id):
+    sst = get_object_or_404(SST, id=sst_id)
+    estado_id = request.POST.get('estado_liquidacion_id')
+    estado = get_object_or_404(EstadoLiquidacion, id=estado_id)
+    sst.estado_liquidacion = estado
+    sst.save()
+    return JsonResponse({'success': True, 'estado': estado.estado, 'color': estado.color})
+
+@require_POST
+def actualizar_observacion_liquidacion(request, sst_id):
+    sst = get_object_or_404(SST, id=sst_id)
+    observacion = request.POST.get('observacion', '')
+    sst.observacion = observacion
+    sst.save()
+    return JsonResponse({'success': True})    

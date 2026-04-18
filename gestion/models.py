@@ -293,6 +293,8 @@ class SST(models.Model):
         return total if total else Decimal('0.00')        
 
     # ... tus campos existentes ...
+    
+    '''
     def actualizar_estado_segun_suministros(self):
         """
         Actualiza el estado de la SST según los estados de sus suministros
@@ -336,8 +338,62 @@ class SST(models.Model):
             # Al menos uno ejecutado o devuelto (pero no todos)
             self.estado_sst = estado_en_ejecucion
         
-        self.save()   
-
+        self.save()   ''' 
+    
+    
+    #2
+    
+    def actualizar_estado_segun_suministros(self):
+    
+    #Actualiza el estado de la SST según los estados de sus suministros
+    #(tanto originales como adicionales)
+    
+        suministros = self.suministros.all()  # Incluye originales y adicionales
+    
+        if not suministros.exists():
+            return  # No hay suministros, no cambiar estado
+    
+    # Obtener o crear estados
+        estado_ejecutado, _ = EstadoSST.objects.get_or_create(
+            estado='EJECUTADO',
+            defaults={'descripcion': 'Trabajo completado', 'color': '#10B981'}
+    )
+        estado_admisible, _ = EstadoSST.objects.get_or_create(
+            estado='ADMISIBLE',
+            defaults={'descripcion': 'Asignado y listo', 'color': '#3B82F6'}
+    )
+        estado_en_ejecucion, _ = EstadoSST.objects.get_or_create(
+            estado='EN EJECUCIÓN',
+            defaults={'descripcion': 'Trabajo en progreso', 'color': '#F59E0B'}
+    )
+    
+    # Contar estados de suministros (todos los tipos)
+        estados_suministros = suministros.values_list('estado_suministro__estado_suministro', flat=True)
+        estados_upper = [e.upper() if e else '' for e in estados_suministros]
+    
+        total = suministros.count()
+        ejecutados_o_devueltos = sum(1 for e in estados_upper if e in ['EJECUTADO', 'DEVUELTO'])
+        asignados = sum(1 for e in estados_upper if e == 'ASIGNADO')
+    
+    # Lógica de actualización
+        if ejecutados_o_devueltos == total:
+        # Todos (originales + adicionales) están ejecutados o devueltos
+            self.estado_sst = estado_ejecutado
+        # Asignar estado_liquidacion por defecto si no tiene uno
+            if not self.estado_liquidacion:
+                estado_en_liquidacion, _ = EstadoLiquidacion.objects.get_or_create(
+                    estado='En liquidacion',
+                    defaults={'color': '#F59E0B'}
+            )
+                self.estado_liquidacion = estado_en_liquidacion
+        elif asignados == total:
+        # Todos están asignados
+            self.estado_sst = estado_admisible
+        elif ejecutados_o_devueltos > 0:
+        # Al menos uno ejecutado o devuelto (pero no todos)
+            self.estado_sst = estado_en_ejecucion
+    
+        self.save()
 
 class Suministro(models.Model):
     sst = models.ForeignKey(

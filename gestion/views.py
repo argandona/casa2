@@ -1749,7 +1749,8 @@ def liquidacion_list(request):
     })
     
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST, csrf_protect
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect
 from django.shortcuts import render, redirect, get_object_or_404
 
 @csrf_protect

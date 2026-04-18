@@ -1717,37 +1717,45 @@ def liquidacion_list(request):
         'estado_sst',
         'estado_liquidacion',
         'distrito'
-    ).prefetch_related(
-        'suministros'
     ).filter(
         estado_sst__estado='EJECUTADO'
     ).order_by('-created_at')
 
-    # Agregar ejecutado_por y observacion_contratista de suministros
     ssts_data = []
+    monto_total = Decimal('0.00')
+    
     for sst in ssts:
         suministros = sst.suministros.all()
-        
         ejecutados_por = ', '.join(
             filter(None, suministros.values_list('ejecutado_por', flat=True).distinct())
         )
         observaciones_contratista = ', '.join(
             filter(None, suministros.values_list('observacion_contratista', flat=True).distinct())
         )
-        
         ssts_data.append({
             'sst': sst,
             'ejecutados_por': ejecutados_por,
             'observaciones_contratista': observaciones_contratista,
         })
+        monto_total += sst.monto_proyectado or Decimal('0.00')
 
     estados_liquidacion = EstadoLiquidacion.objects.all()
+    
+    # Contar por estado de liquidación
+    conteo_estados = {}
+    for estado in estados_liquidacion:
+        conteo_estados[estado.estado] = ssts.filter(estado_liquidacion=estado).count()
+    sin_estado = ssts.filter(estado_liquidacion__isnull=True).count()
 
     return render(request, 'gestion/liquidacion_list.html', {
         'ssts_data': ssts_data,
         'estados_liquidacion': estados_liquidacion,
+        'monto_total': monto_total,
+        'conteo_estados': conteo_estados,
+        'sin_estado': sin_estado,
     })
     
+        
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect

@@ -310,30 +310,38 @@
     </div>
 </div>
 
-<!-- Stats -->
+<!-- Stats --><!-- Stats -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     <div class="stat-card">
         <p class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Total SSTs</p>
         <p class="text-2xl font-semibold text-slate-800">{{ ssts_data|length }}</p>
     </div>
     <div class="stat-card">
-        <p class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">En Liquidación</p>
-        <p class="text-2xl font-semibold text-amber-500">
-            {% with count=0 %}
-            {{ ssts_data|length }}
-            {% endwith %}
-        </p>
+        <p class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Sin estado</p>
+        <p class="text-2xl font-semibold text-amber-500">{{ sin_estado }}</p>
     </div>
     <div class="stat-card">
         <p class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Monto Proyectado</p>
-        <p class="text-xl font-semibold text-slate-800 font-mono">
-            S/ {% for item in ssts_data %}{% if forloop.first %}...{% endif %}{% endfor %}
+        <p class="text-xl font-semibold text-slate-800" style="font-family:'DM Mono',monospace">
+            S/ {{ monto_total|floatformat:2 }}
         </p>
     </div>
     <div class="stat-card">
         <p class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Liquidadas</p>
-        <p class="text-2xl font-semibold text-emerald-500" id="count-liquidadas">0</p>
+        <p class="text-2xl font-semibold text-emerald-500" id="count-liquidadas">
+            {{ conteo_estados.Liquidado|default:0 }}
+        </p>
     </div>
+</div>
+
+<!-- Stats por estado -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+    {% for estado, count in conteo_estados.items %}
+    <div class="stat-card py-3">
+        <p class="text-xs text-slate-500 font-medium mb-1">{{ estado }}</p>
+        <p class="text-xl font-semibold text-slate-700">{{ count }}</p>
+    </div>
+    {% endfor %}
 </div>
 
 <!-- Toolbar -->

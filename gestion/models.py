@@ -146,6 +146,23 @@ class EstadoSuministro(models.Model):
     def __str__(self):
         return self.estado_suministro
 
+class EstadoLiquidacion(models.Model):
+    estado = models.CharField(max_length=50, unique=True, verbose_name="Estado de Liquidación")
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    color = models.CharField(
+        max_length=7, 
+        default='#007bff', 
+        verbose_name="Color", 
+        help_text="Color en formato hexadecimal (#FFFFFF)"
+    )
+    
+    class Meta:
+        verbose_name = "Estado de Liquidación"
+        verbose_name_plural = "Estados de Liquidación"
+        ordering = ['estado']
+        
+    def __str__(self):
+        return self.estado
 
 class SST(models.Model):
     sst = models.CharField(max_length=7, unique=True, db_index=True, verbose_name="Código SST")
@@ -153,7 +170,13 @@ class SST(models.Model):
     distrito = models.ForeignKey('Distrito', on_delete=models.PROTECT, null=True, blank=True, verbose_name="Distrito")
     estado_sst = models.ForeignKey('EstadoSST', on_delete=models.PROTECT, null=True, blank=True, verbose_name="Estado")
     
-    
+    estado_liquidacion = models.ForeignKey(
+    'EstadoLiquidacion',
+    on_delete=models.PROTECT,
+    null=True,
+    blank=True,
+    verbose_name="Estado de Liquidación"
+)
     #monto_proyectado = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))], 
      #                                      null=True, blank=True, verbose_name="Monto Proyectado")
     

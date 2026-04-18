@@ -1742,17 +1742,22 @@ def liquidacion_list(request):
     estados_liquidacion = EstadoLiquidacion.objects.all()
     
     # Contar por estado de liquidación
-    conteo_estados = {}
+    conteo_estados = []
     for estado in estados_liquidacion:
-        conteo_estados[estado.estado] = ssts.filter(estado_liquidacion=estado).count()
-    sin_estado = ssts.filter(estado_liquidacion__isnull=True).count()
+        ssts_estado = ssts.filter(estado_liquidacion=estado)
+        conteo_estados.append({
+            'estado': estado.estado,
+            'color': estado.color,
+            'count': ssts_estado.count(),
+            'monto': sum(s.monto_proyectado or Decimal('0.00') for s in ssts_estado),
+    })
 
     return render(request, 'gestion/liquidacion_list.html', {
         'ssts_data': ssts_data,
         'estados_liquidacion': estados_liquidacion,
         'monto_total': monto_total,
         'conteo_estados': conteo_estados,
-        'sin_estado': sin_estado,
+        #'sin_estado': sin_estado,
     })
     
         

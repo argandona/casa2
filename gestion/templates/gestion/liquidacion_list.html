@@ -488,6 +488,8 @@ function showToast(msg, type = 'success') {
 }
 
 // ── Cambiar estado liquidación ──────────────────────────
+
+
 function cambiarEstadoLiquidacion(select) {
     const sstId = select.dataset.sstId;
     const estadoId = select.value;
@@ -511,21 +513,20 @@ function cambiarEstadoLiquidacion(select) {
         if (data.success) {
             ind.className = 'saving-indicator show saved';
             ind.innerHTML = '<i class="fas fa-check text-xs"></i><span>Guardado</span>';
-            showToast(`Estado actualizado: ${data.estado}`);
-            contarLiquidadas();
+            showToast('Estado actualizado');
         } else {
             throw new Error('Error');
         }
         setTimeout(() => ind.className = 'saving-indicator', 2000);
     })
-    .catch(() => {
+    .catch((err) => {
+        console.error('Error:', err);
         ind.className = 'saving-indicator show error';
         ind.innerHTML = '<i class="fas fa-times text-xs"></i><span>Error al guardar</span>';
         showToast('Error al guardar el estado', 'error');
         setTimeout(() => ind.className = 'saving-indicator', 3000);
     });
 }
-
 // ── Auto guardar observación ────────────────────────────
 const obsTimers = {};
 

@@ -326,19 +326,18 @@
 
 
 <!-- Toolbar -->
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-    <div class="relative">
-        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-        <input type="text" id="search-input" class="search-input" placeholder="Buscar SST, distrito...">
-    </div>
-
-    <!-- Botón Excel -->
+<div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+        <div class="relative">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input type="text" id="search-input" class="search-input" placeholder="Buscar SST, distrito...">
+        </div>
         <a href="{% url 'descargar_excel_liquidacion' %}" 
-           class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
+           class="flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
             <i class="fas fa-file-excel"></i>
-            <span>Exportar Excel</span>
+            <span>Excel</span>
         </a>
-        
+    </div>
     <div class="flex items-center gap-2 text-sm text-slate-500">
         <i class="fas fa-info-circle text-blue-400"></i>
         Los cambios se guardan automáticamente

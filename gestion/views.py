@@ -1757,7 +1757,7 @@ def liquidacion_list(request):
         'estados_liquidacion': estados_liquidacion,
         'monto_total': monto_total,
         'conteo_estados': conteo_estados,
-        #'sin_estado': sin_estado,
+        'sin_estado': sin_estado,
     })
     
         

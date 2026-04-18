@@ -1751,6 +1751,9 @@ def liquidacion_list(request):
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
+
+@csrf_exempt
+
 @require_POST
 def cambiar_estado_liquidacion(request, sst_id):
     sst = get_object_or_404(SST, id=sst_id)
@@ -1759,6 +1762,9 @@ def cambiar_estado_liquidacion(request, sst_id):
     sst.estado_liquidacion = estado
     sst.save()
     return JsonResponse({'success': True, 'estado': estado.estado, 'color': estado.color})
+
+
+@csrf_exempt
 
 @require_POST
 def actualizar_observacion_liquidacion(request, sst_id):

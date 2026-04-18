@@ -4,7 +4,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('gestion', '0004_suministro_observación_lds'),
+        ('gestion', '0006_suministro_observación_lds'),
     ]
 
     operations = [

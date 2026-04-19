@@ -477,19 +477,59 @@
 </div>
 
 {% endblock %}
-
 {% block extra_js %}
 <script>
 const CSRF_TOKEN = '{{ csrf_token }}';
 
+// ── Orden de prioridad de estados ───────────────────────
+// Índice más bajo = aparece primero en la tabla
+const ORDEN_ESTADOS = {
+    'Observado':        0,
+    'En liquidacion':   1,
+    'Enviado a TECSUR': 2,
+    'Liquidado':        3,
+    'Facturado':        4,
+};
+
+function getPrioridad(select) {
+    const text = select.options[select.selectedIndex]?.text?.trim() || '';
+    // Si no está en el mapa (ej. "— Seleccionar —") va al final
+    return ORDEN_ESTADOS[text] ?? 99;
+}
+
+function reordenarTabla() {
+    const tbody = document.querySelector('#liq-table tbody');
+    if (!tbody) return;
+
+    const filas = Array.from(tbody.querySelectorAll('tr[data-sst]'));
+
+    filas.sort((a, b) => {
+        const selA = a.querySelector('.select-liquidacion');
+        const selB = b.querySelector('.select-liquidacion');
+        return getPrioridad(selA) - getPrioridad(selB);
+    });
+
+    // Re-insertar en el nuevo orden con una pequeña animación
+    filas.forEach((fila, i) => {
+        fila.style.animationDelay = `${i * 30}ms`;
+        fila.style.animation = 'none';
+        // Forzar reflow para reiniciar la animación
+        void fila.offsetHeight;
+        fila.style.animation = '';
+        tbody.appendChild(fila);
+    });
+}
+
 // ── Toast ──────────────────────────────────────────────
 function showToast(msg, type = 'success') {
     const toast = document.getElementById('toast');
-    const icon = document.getElementById('toast-icon');
+    const icon  = document.getElementById('toast-icon');
     const msgEl = document.getElementById('toast-msg');
 
     toast.className = `toast ${type}`;
-    icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+    icon.className  = type === 'success'
+        ? 'fas fa-check-circle'
+        : 'fas fa-exclamation-circle';
     msgEl.textContent = msg;
 
     toast.classList.add('show');
@@ -497,12 +537,10 @@ function showToast(msg, type = 'success') {
 }
 
 // ── Cambiar estado liquidación ──────────────────────────
-
-
 function cambiarEstadoLiquidacion(select) {
-    const sstId = select.dataset.sstId;
+    const sstId   = select.dataset.sstId;
     const estadoId = select.value;
-    const ind = document.getElementById(`ind-liq-${sstId}`);
+    const ind     = document.getElementById(`ind-liq-${sstId}`);
 
     if (!estadoId) return;
 
@@ -519,29 +557,33 @@ function cambiarEstadoLiquidacion(select) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) {
-            ind.className = 'saving-indicator show saved';
-            ind.innerHTML = '<i class="fas fa-check text-xs"></i><span>Guardado</span>';
-            showToast('Estado actualizado');
-        } else {
-            throw new Error('Error');
-        }
+        if (!data.success) throw new Error('Error');
+
+        ind.className = 'saving-indicator show saved';
+        ind.innerHTML = '<i class="fas fa-check text-xs"></i><span>Guardado</span>';
+        showToast('Estado actualizado');
+
+        // ⭐ Reordenar tabla después de guardar
+        setTimeout(() => {
+            reordenarTabla();
+        }, 300);
+
         setTimeout(() => ind.className = 'saving-indicator', 2000);
     })
-    .catch((err) => {
-        console.error('Error:', err);
+    .catch(() => {
         ind.className = 'saving-indicator show error';
         ind.innerHTML = '<i class="fas fa-times text-xs"></i><span>Error al guardar</span>';
         showToast('Error al guardar el estado', 'error');
         setTimeout(() => ind.className = 'saving-indicator', 3000);
     });
 }
+
 // ── Auto guardar observación ────────────────────────────
 const obsTimers = {};
 
 function autoGuardarObservacion(textarea) {
     const sstId = textarea.dataset.sstId;
-    const ind = document.getElementById(`ind-obs-${sstId}`);
+    const ind   = document.getElementById(`ind-obs-${sstId}`);
 
     ind.className = 'saving-indicator show';
     ind.innerHTML = '<i class="fas fa-circle-notch fa-spin text-xs"></i><span>Guardando...</span>';
@@ -558,13 +600,10 @@ function autoGuardarObservacion(textarea) {
         })
         .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                ind.className = 'saving-indicator show saved';
-                ind.innerHTML = '<i class="fas fa-check text-xs"></i><span>Guardado</span>';
-                showToast('Observación guardada');
-            } else {
-                throw new Error('Error');
-            }
+            if (!data.success) throw new Error('Error');
+            ind.className = 'saving-indicator show saved';
+            ind.innerHTML = '<i class="fas fa-check text-xs"></i><span>Guardado</span>';
+            showToast('Observación guardada');
             setTimeout(() => ind.className = 'saving-indicator', 2000);
         })
         .catch(() => {
@@ -577,24 +616,16 @@ function autoGuardarObservacion(textarea) {
 }
 
 // ── Buscar ──────────────────────────────────────────────
-document.getElementById('search-input').addEventListener('input', function() {
+document.getElementById('search-input').addEventListener('input', function () {
     const q = this.value.toLowerCase();
-    document.querySelectorAll('#liq-table tbody tr').forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(q) ? '' : 'none';
+    document.querySelectorAll('#liq-table tbody tr[data-sst]').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
 });
 
-// ── Contar liquidadas ───────────────────────────────────
-function contarLiquidadas() {
-    let count = 0;
-    document.querySelectorAll('.select-liquidacion').forEach(sel => {
-        const text = sel.options[sel.selectedIndex]?.text || '';
-        if (text.toLowerCase().includes('liquidado')) count++;
-    });
-    document.getElementById('count-liquidadas').textContent = count;
-}
-
-document.addEventListener('DOMContentLoaded', contarLiquidadas);
+// ── Al cargar: ordenar la tabla con el estado actual ────
+document.addEventListener('DOMContentLoaded', () => {
+    reordenarTabla();
+});
 </script>
 {% endblock %}

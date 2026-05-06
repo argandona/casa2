@@ -1320,7 +1320,8 @@ class Command(BaseCommand):
         
         
  
- # views.pyimport openpyxl
+ # views.py
+import openpyxl
 from django.http import HttpResponse
 from .models import Suministro
 

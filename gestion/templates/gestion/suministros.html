@@ -1309,7 +1309,7 @@ function descargarExcelModulo() {
     const estado = document.querySelector('select[name="estado"]')?.value || '';
     const search = document.querySelector('input[name="search"]')?.value || '';
 
-    let url = '{% url "descargar_excel_modulo" %}?';
+    let url = '{% url "descargar_modulo" %}?';
 
     const params = [];
     if (sst) params.push(`sst=${encodeURIComponent(sst)}`);

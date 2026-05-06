@@ -1302,6 +1302,34 @@ function descargarExcel() {
     // Opcional: mostrar mensaje de éxito
     alert('✅ Descargando Excel... El archivo se guardará automáticamente.');
 }
+
+function descargarExcelModulo() {
+    const sst = document.querySelector('input[name="sst"]')?.value || '';
+    const distrito = document.querySelector('select[name="distrito"]')?.value || '';
+    const estado = document.querySelector('select[name="estado"]')?.value || '';
+    const search = document.querySelector('input[name="search"]')?.value || '';
+
+    let url = '{% url "descargar_excel_modulo" %}?';
+
+    const params = [];
+    if (sst) params.push(`sst=${encodeURIComponent(sst)}`);
+    if (distrito) params.push(`distrito=${encodeURIComponent(distrito)}`);
+    if (estado) params.push(`estado=${encodeURIComponent(estado)}`);
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+
+    if (params.length > 0) {
+        url += params.join('&');
+    }
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `modulo_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 </script>
+
+
 
 {% endblock %}

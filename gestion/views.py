@@ -1316,3 +1316,141 @@ class Command(BaseCommand):
                 f'\n✅ {total_actualizado} SSTs actualizadas de {ssts.count()} totales'
             )
         )
+        
+        
+        
+ 
+ # views.pyimport openpyxl
+from django.http import HttpResponse
+from .models import Suministro
+
+
+def limpiar_codigo(valor):
+    if not valor:
+        return ""
+    return str(valor)[:3].lstrip("0")
+
+
+def descargar_para_modulo(request):
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Formato Modulo"
+
+    headers = [
+        "Item","Solicitud","Fecha Asignación","Actualizar a",
+        "Alimentador","Sed","Suministro","Medidor Sel","Marca Sel",
+        "Fase Sel","Potencia","Fecha Prim. Inst.","Area Solicitante",
+        "Tipo Orden","Fecha Recepción","Nombre","Dirección","Distrito",
+        "Sucursal","Fecha Instalación","Tipo Acometida Sel",
+        "Tipo Tapa Sel","Tipo Caja Sel","Obs LDS","CR Responsable",
+        "Contratista","Actividad 1","Actividad 2","Actividad 3","Actividad 4",
+        "Cant FTE 1","Cant FTE 2","Cant FTE 3","Cant FTE 4",
+        "Condición Mant.","Tip. Mot. Desestimado","Mot. Desestimado",
+        "Fecha Ejecución","Ejecutado Por","Obs. Contra",
+        "Fecha Rpta.","Usuario Rpta.","Medidor Enc.","Marca Enc.",
+        "Fase Enc.","Lectura Enc.","Tipo Acometida Enc.",
+        "Cod Des. Tip. Tapa Enc.","Cod Des. Tip. Caja Enc.",
+        "Cant. Fotos Ant.","Ruta de Fotos Antes","Cant. Fotos Des.",
+        "Ruta de Fotos Después","Ruta de Cuaderno Obra",
+        "Ruta de Acta de Conformidad"
+    ]
+
+    ws.append(headers)
+
+    registros = Suministro.objects.select_related(
+        'estado_suministro', 'distrito', 'sst'
+    ).all()
+
+    for r in registros:
+
+        estado_texto = r.estado_suministro.estado_suministro
+
+        # 🔹 Transformación correcta
+        if estado_texto == "EJECUTADO":
+            estado_mod = "E=EJECUTADO"
+        elif estado_texto == "DEVUELTO":
+            estado_mod = "D=DEVUELTO"
+        else:
+            estado_mod = ""
+
+        # Inicializar
+        fte1 = fte2 = fte3 = fte4 = ""
+        condicion = tip_mot = mot = ""
+        fecha_ejec = ejecutado = obs_contra = ""
+
+        # 🔥 EJECUTADO
+        if estado_texto == "EJECUTADO":
+
+            fte1 = limpiar_codigo(r.actividad1_prog)
+            fte2 = limpiar_codigo(r.actividad2_prog)
+            fte3 = limpiar_codigo(r.actividad3_prog)
+            fte4 = limpiar_codigo(r.actividad4_prog)
+
+            fecha_ejec = r.fecha_ejecucion
+            ejecutado = r.ejecutado_por
+            obs_contra = r.observacion_contratista
+
+        # 🔥 DEVUELTO
+        elif estado_texto == "DEVUELTO":
+
+            condicion = "D=DEVUELTO"
+            tip_mot = "020"
+            mot = r.observacion_contratista
+
+        fila = [
+            r.item,
+            r.sst.sst if r.sst else "",
+            r.fecha_primer_envio,
+            estado_mod,
+            r.alim,
+            r.sed,
+            r.suministro,
+            r.medidor,
+            r.marca,
+            r.fase,
+            r.potencia,
+            r.insta_med,
+            r.area_solicitante,
+            r.tipo_orden,
+            r.fecha_asig,
+            r.nombre,
+            r.direccion,
+            r.distrito.nombre_distrito if r.distrito else "",
+            r.sucursal,
+            r.insta_cnx,
+            r.tipo_acometida,
+            r.tipo_tapa,
+            r.tipo_caja,
+            r.Observacion_LDS,
+            r.cr_emisor,
+            r.contratista,
+
+            r.actividad1_prog,
+            r.actividad2_prog,
+            r.actividad3_prog,
+            r.actividad4_prog,
+
+            fte1, fte2, fte3, fte4,
+
+            condicion,
+            tip_mot,
+            mot,
+
+            fecha_ejec,
+            ejecutado,
+            obs_contra,
+
+            "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", ""
+        ]
+
+        ws.append(fila)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=formato_modulo.xlsx'
+
+    wb.save(response)
+    return response

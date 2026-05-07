@@ -254,6 +254,8 @@ def suministro_list(request):
     estado_filter = request.GET.get('estado', '')
     search = request.GET.get('search', '')
     obs_lds_filter = request.GET.get('obs_lds', '')
+    fecha_desde = request.GET.get('fecha_desde', '')
+    fecha_hasta = request.GET.get('fecha_hasta', '')
 
     todas_sst = SST.objects.select_related('distrito', 'estado_sst').order_by('sst')
 
@@ -277,6 +279,25 @@ def suministro_list(request):
         )
     if obs_lds_filter:
         suministros = suministros.filter(Observacion_LDS__icontains=obs_lds_filter)
+        
+        
+   
+
+# ← AGREGAR ESTO:
+    if fecha_desde:
+        try:
+            suministros = suministros.filter(
+                fecha_ejecucion__gte=datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+        )
+        except ValueError:
+            pass
+    if fecha_hasta:
+        try:
+            suministros = suministros.filter(
+            fecha_ejecucion__lte=datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+        )
+        except ValueError:
+            pass        
 
     # --- Paginación ---
     paginator = Paginator(suministros, 50)
@@ -319,6 +340,8 @@ def suministro_list(request):
         'estado_filter': estado_filter,
         'search': search,
         'obs_lds_filter': obs_lds_filter,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
         # Stats SST
         'sst_ejecutado': sst_por_estado.get('Ejecutado', 0),
         'sst_admisible': sst_por_estado.get('Admisible', 0),
@@ -886,6 +909,8 @@ def descargar_excel_suministros(request):
             )
         if obs_lds_filter:
             suministros = suministros.filter(Observacion_LDS__icontains=obs_lds_filter)   
+            
+            
             
         if fecha_desde:
             try:

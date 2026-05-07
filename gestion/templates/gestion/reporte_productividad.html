@@ -48,15 +48,34 @@
                         </td>
                         
                         <!-- Montos por ejecutor -->
-                        {% for monto in fila.montos %}
-                            <td class="px-4 py-3 text-center {% if monto > 0 %}font-bold text-gray-900{% else %}text-gray-400{% endif %}">
-                                {% if monto > 0 %}
-                                    S/ {{ monto|floatformat:2 }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                        {% endfor %}
+                        {% for data in fila.montos %}
+<td class="
+    px-4 py-3 text-center font-bold whitespace-nowrap
+    {% if data.monto > 1000 %}
+        bg-green-200 text-green-900
+    {% elif data.monto > 500 %}
+        bg-green-100 text-green-800
+    {% elif data.monto > 0 %}
+        bg-green-50 text-green-700
+    {% else %}
+        text-gray-400
+    {% endif %}
+">
+
+    {% if data.monto > 0 %}
+
+        S/ {{ data.monto|floatformat:2 }}
+
+        <span class="text-xs text-gray-500 font-semibold">
+            ({{ data.cantidad }})
+        </span>
+
+    {% else %}
+        -
+    {% endif %}
+
+</td>
+{% endfor %}
                         
                         <!-- Total por fecha -->
                         <td class="px-4 py-3 text-center font-bold text-green-700 bg-green-50">

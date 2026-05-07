@@ -1070,7 +1070,14 @@ def reporte_productividad(request):
         9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre',
     }
 
-    matriz = defaultdict(lambda: defaultdict(lambda: Decimal('0.00')))
+    matriz = defaultdict(
+    lambda: defaultdict(
+        lambda: {
+            'monto': Decimal('0.00'),
+            'ssts': set()
+        }
+    )
+)
     ejecutores_set = set()
     totales_por_ejecutor = defaultdict(lambda: Decimal('0.00'))
     totales_por_fecha = defaultdict(lambda: Decimal('0.00'))
@@ -1087,7 +1094,8 @@ def reporte_productividad(request):
             fechas_formateadas[fecha] = f"{fecha.day:02d} de {meses[fecha.month]} de {fecha.year}"
             fechas_ordenadas.append(fecha)
 
-        matriz[fecha][ejecutor] += monto
+        matriz[fecha][ejecutor]['monto'] += monto
+        matriz[fecha][ejecutor]['ssts'].add(s.sst_id)
         ejecutores_set.add(ejecutor)
         totales_por_ejecutor[ejecutor] += monto
         totales_por_fecha[fecha] += monto
@@ -1097,13 +1105,21 @@ def reporte_productividad(request):
     fechas_ordenadas = sorted(set(fechas_ordenadas))
 
     reporte = [
-        {
-            'fecha': fechas_formateadas[fecha],
-            'montos': [matriz[fecha][ejecutor] for ejecutor in ejecutores],
-            'total': totales_por_fecha[fecha],
-        }
-        for fecha in fechas_ordenadas
-    ]
+    {
+        'fecha': fechas_formateadas[fecha],
+
+        'montos': [
+            {
+                'monto': matriz[fecha][ejecutor]['monto'],
+                'cantidad': len(matriz[fecha][ejecutor]['ssts'])
+            }
+            for ejecutor in ejecutores
+        ],
+
+        'total': totales_por_fecha[fecha],
+    }
+    for fecha in fechas_ordenadas
+]
 
     context = {
         'reporte': reporte,

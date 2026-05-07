@@ -52,7 +52,8 @@
 <td class="
     px-4 py-3 text-center font-bold whitespace-nowrap
     {% if data.monto > 1000 %}
-        bg-green-200 text-green-900
+        
+    bg-green-200 text-green-900
     {% elif data.monto > 500 %}
         bg-green-100 text-green-800
     {% elif data.monto > 0 %}
@@ -62,7 +63,7 @@
     {% endif %}
 ">
 
-     {% if data.monto > 0 %}
+    {% if data.monto > 0 %}
         S/ {{ data.monto|floatformat:2 }}
     {% else %}
         -
@@ -72,9 +73,6 @@
         ({{ data.cantidad }})
     </span>
 
-    {% else %}
-        -
-    {% endif %}
 </td>
 {% endfor %}
                         

@@ -1289,6 +1289,10 @@ function descargarExcel() {
     const distrito = document.querySelector('select[name="distrito"]')?.value || '';
     const estado = document.querySelector('select[name="estado"]')?.value || '';
     const search = document.querySelector('input[name="search"]')?.value || '';
+    // ← AGREGAR ESTAS TRES:
+    const obs_lds = document.querySelector('input[name="obs_lds"]')?.value || '';
+    const fecha_desde = document.querySelector('input[name="fecha_desde"]')?.value || '';
+    const fecha_hasta = document.querySelector('input[name="fecha_hasta"]')?.value || '';
     
     // Construir la URL con los mismos filtros
     let url = '{% url "descargar_excel_suministros" %}?';
@@ -1298,6 +1302,11 @@ function descargarExcel() {
     if (distrito) params.push(`distrito=${encodeURIComponent(distrito)}`);
     if (estado) params.push(`estado=${encodeURIComponent(estado)}`);
     if (search) params.push(`search=${encodeURIComponent(search)}`);
+    // ← AGREGAR ESTAS TRES:
+    if (obs_lds) params.push(`obs_lds=${encodeURIComponent(obs_lds)}`);
+    if (fecha_desde) params.push(`fecha_desde=${encodeURIComponent(fecha_desde)}`);
+    if (fecha_hasta) params.push(`fecha_hasta=${encodeURIComponent(fecha_hasta)}`);
+
     
     if (params.length > 0) {
         url += params.join('&');

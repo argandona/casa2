@@ -62,18 +62,19 @@
     {% endif %}
 ">
 
-    {% if data.monto > 0 %}
-
+     {% if data.monto > 0 %}
         S/ {{ data.monto|floatformat:2 }}
-
-        <span class="text-xs text-gray-500 font-semibold">
-            ({{ data.cantidad }})
-        </span>
-
     {% else %}
         -
     {% endif %}
 
+    <span class="text-xs text-gray-500 font-semibold">
+        ({{ data.cantidad }})
+    </span>
+
+    {% else %}
+        -
+    {% endif %}
 </td>
 {% endfor %}
                         

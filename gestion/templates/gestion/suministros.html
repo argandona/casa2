@@ -27,10 +27,11 @@
 
 
 <!-- Filtros compactos -->
+<!-- Filtros compactos -->
 <div class="bg-white rounded-lg shadow p-4 mb-4">
-    <form method="GET" class="grid grid-cols-1 md:grid-cols-6 gap-2">
+    <form method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-2">
         <!-- Buscar -->
-        <div>
+        <div class="md:col-span-2">
             <label class="block text-xs font-medium text-gray-600 mb-1">Buscar</label>
             <input type="text" name="search" value="{{ search }}" 
                    placeholder="Suministro, medidor..." 
@@ -38,7 +39,7 @@
         </div>
         
         <!-- SST -->
-        <div>
+        <div class="md:col-span-2">
             <label class="block text-xs font-medium text-gray-600 mb-1">SST</label>
             <input type="text" name="sst" value="{{ sst_filter }}" 
                    placeholder="Código SST..." 
@@ -46,7 +47,7 @@
         </div>
         
         <!-- Estado -->
-        <div>
+        <div class="md:col-span-1">
             <label class="block text-xs font-medium text-gray-600 mb-1">Estado</label>
             <select name="estado" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
                 <option value="">Todos</option>
@@ -59,7 +60,7 @@
         </div>
         
         <!-- Distrito -->
-        <div>
+        <div class="md:col-span-2">
             <label class="block text-xs font-medium text-gray-600 mb-1">Distrito</label>
             <select name="distrito" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
                 <option value="">Todos</option>
@@ -71,17 +72,31 @@
             </select>
         </div>
 
-
-        <div>
-    <label class="block text-xs font-medium text-gray-600 mb-1">Obs. LDS</label>
-    <input type="text" name="obs_lds"
-           value="{{ obs_lds_filter }}"
-           placeholder="Buscar obs. LDS..."
-           class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
-</div>
+        <!-- Obs. LDS -->
+        <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Obs. LDS</label>
+            <input type="text" name="obs_lds"
+                   value="{{ obs_lds_filter }}"
+                   placeholder="Buscar obs. LDS..."
+                   class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
+        </div>
+        
+        <!-- Filtro de fechas - Fecha Desde -->
+        <div class="md:col-span-1">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Fecha Desde</label>
+            <input type="date" name="fecha_desde" value="{{ fecha_desde|default:'' }}" 
+                   class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
+        </div>
+        
+        <!-- Filtro de fechas - Fecha Hasta -->
+        <div class="md:col-span-1">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Fecha Hasta</label>
+            <input type="date" name="fecha_hasta" value="{{ fecha_hasta|default:'' }}" 
+                   class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
+        </div>
         
         <!-- Botones -->
-        <div class="flex items-end space-x-1">
+        <div class="md:col-span-1 flex items-end space-x-1">
             <button type="submit" class="flex-1 bg-blue-600 text-white px-3 py-1.5 text-sm rounded hover:bg-blue-700">
                 Buscar
             </button>
@@ -91,7 +106,6 @@
         </div>
     </form>
 </div>
-
 
 <!-- ========== TARJETAS DE RESUMEN COMPACTAS ========== -->
 <div class="mb-6">

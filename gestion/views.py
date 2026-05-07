@@ -864,6 +864,9 @@ def descargar_excel_suministros(request):
         distrito_filter = request.GET.get('distrito', '')
         estado_filter = request.GET.get('estado', '')
         search = request.GET.get('search', '')
+        obs_lds_filter = request.GET.get('obs_lds', '')
+        fecha_desde = request.GET.get('fecha_desde', '')
+        fecha_hasta = request.GET.get('fecha_hasta', '')
 
         suministros = Suministro.objects.select_related(
             'sst', 'distrito', 'estado_suministro'
@@ -881,6 +884,22 @@ def descargar_excel_suministros(request):
                 Q(medidor__icontains=search) |
                 Q(direccion__icontains=search)
             )
+        if obs_lds_filter:
+            suministros = suministros.filter(Observacion_LDS__icontains=obs_lds_filter)   
+            
+        if fecha_desde:
+            try:
+                fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                suministros = suministros.filter(fecha_ejecucion__gte=fecha_desde_obj)
+            except ValueError:
+                pass
+        
+        if fecha_hasta:
+            try:
+                fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+                suministros = suministros.filter(fecha_ejecucion__lte=fecha_hasta_obj)
+            except ValueError:
+                pass     
 
         data = []
         for s in suministros:

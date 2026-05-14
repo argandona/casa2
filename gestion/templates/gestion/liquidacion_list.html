@@ -5,7 +5,37 @@
 
 {% block extra_css %}
 <style>
+
+
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+
+    /* Filtros de estado */
+.filtro-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid #e2e8f0;
+    background: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.02em;
+}
+.filtro-btn:hover {
+    border-color: #94a3b8;
+    color: #334155;
+    background: #f8fafc;
+}
+.filtro-btn.active {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: white;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.18);
+}
 
     body { font-family: 'DM Sans', sans-serif; }
 
@@ -332,6 +362,23 @@
             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
             <input type="text" id="search-input" class="search-input" placeholder="Buscar SST, distrito...">
         </div>
+
+        <!-- ⬇️ FILTRO POR ESTADO DE LIQUIDACIÓN -->
+        <div class="flex items-center gap-2 flex-wrap" id="filtros-estado">
+            <button class="filtro-btn active" data-estado="">
+                Todos
+            </button>
+            {% for estado in estados_liquidacion %}
+            <button class="filtro-btn" data-estado="{{ estado.estado }}">
+                {{ estado.estado }}
+            </button>
+            {% endfor %}
+            <button class="filtro-btn" data-estado="__sin_estado__">
+                Sin estado
+            </button>
+        </div>
+        <!-- ⬆️ FIN FILTRO -->
+
         <a href="{% url 'descargar_excel_liquidacion' %}" 
            class="flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
             <i class="fas fa-file-excel"></i>
@@ -626,6 +673,43 @@ document.getElementById('search-input').addEventListener('input', function () {
 // ── Al cargar: ordenar la tabla con el estado actual ────
 document.addEventListener('DOMContentLoaded', () => {
     reordenarTabla();
+});
+
+// ── Estado activo del filtro ────────────────────────────
+let filtroActivo = '';
+
+function aplicarFiltros() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+
+    document.querySelectorAll('#liq-table tbody tr[data-sst]').forEach(row => {
+        const textoFila = row.textContent.toLowerCase();
+        const coincideBusqueda = textoFila.includes(q);
+
+        let coincideEstado = true;
+        if (filtroActivo === '__sin_estado__') {
+            const sel = row.querySelector('.select-liquidacion');
+            coincideEstado = !sel || sel.value === '';
+        } else if (filtroActivo !== '') {
+            const sel = row.querySelector('.select-liquidacion');
+            const textoSel = sel?.options[sel.selectedIndex]?.text?.trim() || '';
+            coincideEstado = textoSel === filtroActivo;
+        }
+
+        row.style.display = (coincideBusqueda && coincideEstado) ? '' : 'none';
+    });
+}
+
+// ── Buscar ──────────────────────────────────────────────
+document.getElementById('search-input').addEventListener('input', aplicarFiltros);
+
+// ── Filtros de estado ───────────────────────────────────
+document.querySelectorAll('.filtro-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+        document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        filtroActivo = this.dataset.estado;
+        aplicarFiltros();
+    });
 });
 </script>
 {% endblock %}

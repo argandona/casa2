@@ -1253,29 +1253,32 @@ def programacion_list(request):
 
     hoy = timezone.localdate()
     ayer = hoy - timedelta(days=1)
+    antes_ayer = hoy - timedelta(days=2)
 
     suministros = (
         Suministro.objects
         .filter(
-            fecha_programada__in=[hoy, ayer],
+            fecha_programada__in=[hoy, ayer, antes_ayer],
             estado_suministro__estado_suministro='ASIGNADO'
         )
         .select_related('sst', 'sst__distrito', 'estado_suministro', 'distrito')
         .order_by('fecha_programada', 'sst__sst', 'item')
     )
 
-    # Agrupar por fecha y luego por SST
-    dias = {
-        'hoy':  {'label': f'Hoy — {hoy.strftime("%d/%m/%Y")}',  'ssts': {}},
-        'ayer': {'label': f'Ayer — {ayer.strftime("%d/%m/%Y")}', 'ssts': {}},
-    }
+    dias = [
+        {'clave': 'hoy',         'titulo': 'Hoy',            'fecha': hoy,         'ssts': {}, 'count': 0},
+        {'clave': 'ayer',        'titulo': 'Ayer',           'fecha': ayer,        'ssts': {}, 'count': 0},
+        {'clave': 'antes_ayer',  'titulo': 'Antes de ayer',  'fecha': antes_ayer,  'ssts': {}, 'count': 0},
+    ]
+    fecha_a_dia = {d['fecha']: d for d in dias}
 
     for s in suministros:
-        clave = 'hoy' if s.fecha_programada == hoy else 'ayer'
-        sst_codigo = s.sst.sst
-        if sst_codigo not in dias[clave]['ssts']:
-            dias[clave]['ssts'][sst_codigo] = {'sst': s.sst, 'suministros': []}
-        dias[clave]['ssts'][sst_codigo]['suministros'].append(s)
+        dia = fecha_a_dia[s.fecha_programada]
+        codigo = s.sst.sst
+        if codigo not in dia['ssts']:
+            dia['ssts'][codigo] = {'sst': s.sst, 'suministros': []}
+        dia['ssts'][codigo]['suministros'].append(s)
+        dia['count'] += 1
 
     return render(request, 'gestion/programacion.html', {
         'dias': dias,

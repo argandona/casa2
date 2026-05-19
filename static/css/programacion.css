@@ -1,0 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+body { font-family: 'DM Sans', sans-serif; }
+
+/* ── Header ───────────────────────────────────────────── */
+.prog-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #1e3a5f 100%);
+    border-radius: 18px;
+    padding: 32px 36px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+}
+.prog-header::before {
+    content: '';
+    position: absolute;
+    top: -50px; right: -50px;
+    width: 200px; height: 200px;
+    background: rgba(99,102,241,0.12);
+    border-radius: 50%;
+}
+.prog-header::after {
+    content: '';
+    position: absolute;
+    bottom: -30px; left: 160px;
+    width: 120px; height: 120px;
+    background: rgba(16,185,129,0.08);
+    border-radius: 50%;
+}
+
+/* ── KPI cards ────────────────────────────────────────── */
+.kpi-card {
+    background: white;
+    border-radius: 14px;
+    padding: 20px 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* ── Day section ──────────────────────────────────────── */
+.day-section { margin-bottom: 40px; }
+
+.day-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 24px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.day-badge.hoy        { background: #eff6ff; color: #1d4ed8; border: 1.5px solid #bfdbfe; }
+.day-badge.ayer       { background: #f5f3ff; color: #6d28d9; border: 1.5px solid #ddd6fe; }
+.day-badge.antes_ayer { background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; }
+
+.day-line.hoy        { border-left: 3px solid #3b82f6; }
+.day-line.ayer       { border-left: 3px solid #7c3aed; }
+.day-line.antes_ayer { border-left: 3px solid #94a3b8; }
+
+/* ── SST card ─────────────────────────────────────────── */
+.sst-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    overflow: hidden;
+    margin-bottom: 12px;
+    transition: box-shadow 0.2s;
+}
+.sst-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+.sst-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.sst-code {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+}
+
+/* ── Table ────────────────────────────────────────────── */
+.prog-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.prog-table thead th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    white-space: nowrap;
+    background: #fcfcfd;
+    border-bottom: 1px solid #f1f5f9;
+}
+.prog-table tbody tr {
+    border-bottom: 1px solid #f8fafc;
+    transition: background 0.12s;
+}
+.prog-table tbody tr:last-child { border-bottom: none; }
+.prog-table tbody tr:hover { background: #f8fafc; }
+.prog-table td {
+    padding: 11px 16px;
+    color: #334155;
+    vertical-align: middle;
+}
+
+.cell-code {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #0f172a;
+}
+.cell-hora {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: #475569;
+    white-space: nowrap;
+}
+.badge-adic {
+    font-size: 0.62rem;
+    font-weight: 700;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+/* ── Empty state ──────────────────────────────────────── */
+.empty-prog {
+    text-align: center;
+    padding: 80px 20px;
+    color: #94a3b8;
+}
+
+/* ── Scrollable ───────────────────────────────────────── */
+.table-scroll { overflow-x: auto; }

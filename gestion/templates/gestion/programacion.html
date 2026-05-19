@@ -1,122 +1,130 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Programación del Día - Encossa{% endblock %}
+{% block title %}Programación — Encossa{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/programacion.css' %}">
+{% endblock %}
 
 {% block content %}
 
 <!-- Header -->
-<div class="mb-6">
-    <div class="flex items-center gap-3 mb-1">
-        <div class="bg-blue-100 rounded-lg w-10 h-10 flex items-center justify-center">
-            <i class="fas fa-calendar-check text-blue-600"></i>
+<div class="prog-header">
+    <div style="position:relative;z-index:10;">
+        <div class="flex items-center gap-3 mb-1">
+            <div style="background:rgba(99,102,241,0.2);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-calendar-check" style="color:#a5b4fc;font-size:0.95rem;"></i>
+            </div>
+            <p style="color:#a5b4fc;font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;">Encossa</p>
         </div>
-        <div>
-            <h1 class="text-2xl font-bold text-gray-800">Programación</h1>
-            <p class="text-sm text-gray-500">Suministros asignados de hoy y ayer</p>
-        </div>
+        <h1 style="color:white;font-size:1.6rem;font-weight:700;margin-top:10px;">Programación del día</h1>
+        <p style="color:#94a3b8;font-size:0.85rem;margin-top:4px;">Suministros en estado <strong style="color:#c7d2fe;">ASIGNADO</strong> — hoy, ayer y antes de ayer</p>
     </div>
 </div>
 
-<!-- KPI -->
-<div class="bg-white border border-gray-200 rounded-xl shadow-sm px-6 py-4 mb-6 inline-flex items-center gap-4">
-    <div class="bg-indigo-50 rounded-lg p-3">
-        <i class="fas fa-clipboard-list text-indigo-600 text-lg"></i>
+<!-- KPI cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    {% for dia in dias %}
+    <div class="kpi-card">
+        <div class="flex items-center gap-3 mb-3">
+            <span class="day-badge {{ dia.clave }}">{{ dia.titulo }}</span>
+            <span style="font-size:0.72rem;color:#94a3b8;">{{ dia.fecha|date:"d/m/Y" }}</span>
+        </div>
+        <p style="font-size:2rem;font-weight:700;color:#0f172a;line-height:1;">{{ dia.count }}</p>
+        <p style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">suministro{% if dia.count != 1 %}s{% endif %} asignado{% if dia.count != 1 %}s{% endif %}</p>
     </div>
-    <div>
-        <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Total suministros asignados</p>
-        <p class="text-3xl font-bold text-gray-800">{{ total }}</p>
-    </div>
+    {% endfor %}
 </div>
 
 {% if total == 0 %}
-<!-- Empty state -->
-<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-16 text-center">
-    <i class="fas fa-calendar-times text-4xl text-gray-300 mb-4 block"></i>
-    <p class="text-lg font-medium text-gray-400">No hay suministros asignados para hoy ni ayer</p>
-    <p class="text-sm text-gray-300 mt-1">Los suministros con estado ASIGNADO y fecha programada aparecerán aquí</p>
+<div class="empty-prog">
+    <i class="fas fa-calendar-times" style="font-size:3rem;opacity:0.25;display:block;margin-bottom:16px;"></i>
+    <p style="font-size:1.1rem;font-weight:600;color:#cbd5e1;">Sin suministros asignados</p>
+    <p style="font-size:0.85rem;color:#e2e8f0;margin-top:6px;">Los suministros con estado ASIGNADO y fecha programada aparecerán aquí</p>
 </div>
 
 {% else %}
 
-{% for clave, dia in dias.items %}
+{% for dia in dias %}
 {% if dia.ssts %}
-<!-- Bloque de día -->
-<div class="mb-8">
-    <div class="flex items-center gap-2 mb-3">
-        <span class="{% if clave == 'hoy' %}bg-blue-600{% else %}bg-gray-400{% endif %} text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-            {% if clave == 'hoy' %}Hoy{% else %}Ayer{% endif %}
-        </span>
-        <span class="text-sm text-gray-500 font-medium">{{ dia.label }}</span>
-        <span class="text-xs text-gray-400 ml-1">— {{ dia.ssts|length }} SST{% if dia.ssts|length != 1 %}s{% endif %}</span>
-    </div>
+<div class="day-section">
 
-    <div class="space-y-4">
-        {% for sst_codigo, grupo in dia.ssts.items %}
-        <!-- Tarjeta SST -->
-        <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <!-- Header SST -->
-            <div class="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <span class="font-mono font-semibold text-sm bg-gray-800 text-white px-3 py-1 rounded-md">
-                        {{ grupo.sst.sst }}
-                    </span>
-                    <span class="text-sm text-gray-600">{{ grupo.sst.distrito.nombre_distrito|default:"—" }}</span>
-                </div>
-                <span class="text-xs text-gray-400">{{ grupo.suministros|length }} suministro{% if grupo.suministros|length != 1 %}s{% endif %}</span>
-            </div>
-
-            <!-- Tabla de suministros -->
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead>
-                        <tr class="text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
-                            <th class="px-5 py-2 text-left font-semibold">Item</th>
-                            <th class="px-5 py-2 text-left font-semibold">Suministro</th>
-                            <th class="px-5 py-2 text-left font-semibold">Tipo</th>
-                            <th class="px-5 py-2 text-left font-semibold">Dirección</th>
-                            <th class="px-5 py-2 text-left font-semibold">Contacto</th>
-                            <th class="px-5 py-2 text-left font-semibold">Hora</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-50">
-                        {% for s in grupo.suministros %}
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-5 py-3 text-gray-700">{{ s.item }}</td>
-                            <td class="px-5 py-3 font-medium text-gray-900">
-                                {{ s.suministro }}
-                                {% if s.tipo_suministro == 'ADICIONAL' %}
-                                <span class="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">ADIC</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-5 py-3 text-gray-600">
-                                {% if s.tipo_suministro == 'ADICIONAL' %}
-                                <span class="text-yellow-600">Adicional</span>
-                                {% else %}
-                                <span class="text-blue-600">Original</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-5 py-3 text-gray-600 max-w-xs truncate" title="{{ s.direccion }}">
-                                {{ s.direccion|truncatechars:50 }}
-                            </td>
-                            <td class="px-5 py-3 text-gray-600">
-                                {% if s.contacto %}{{ s.contacto }}{% if s.telefono %} · {{ s.telefono }}{% endif %}{% else %}—{% endif %}
-                            </td>
-                            <td class="px-5 py-3 text-gray-600 whitespace-nowrap">
-                                {% if s.hora_inicio_programada and s.hora_fin_programada %}
-                                    {{ s.hora_inicio_programada|time:"H:i" }} – {{ s.hora_fin_programada|time:"H:i" }}
-                                {% else %}
-                                    <span class="text-gray-300 italic">Sin hora</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <!-- Day header -->
+    <div class="day-line {{ dia.clave }}" style="padding-left:14px;margin-bottom:16px;">
+        <div class="flex items-center gap-3">
+            <span class="day-badge {{ dia.clave }}">
+                <i class="fas fa-circle" style="font-size:0.4rem;"></i>
+                {{ dia.titulo }}
+            </span>
+            <span style="font-size:0.85rem;color:#64748b;font-weight:500;">{{ dia.fecha|date:"l d \d\e F" }}</span>
+            <span style="font-size:0.75rem;color:#94a3b8;">·  {{ dia.ssts|length }} SST · {{ dia.count }} suministro{% if dia.count != 1 %}s{% endif %}</span>
         </div>
-        {% endfor %}
     </div>
+
+    <!-- SST cards -->
+    {% for sst_codigo, grupo in dia.ssts.items %}
+    <div class="sst-card">
+
+        <!-- SST header -->
+        <div class="sst-card-header">
+            <div class="flex items-center gap-3">
+                <span class="sst-code">{{ grupo.sst.sst }}</span>
+                <span style="font-size:0.82rem;color:#475569;">{{ grupo.sst.distrito.nombre_distrito|default:"—" }}</span>
+            </div>
+            <span style="font-size:0.72rem;color:#94a3b8;font-weight:600;">
+                {{ grupo.suministros|length }} item{% if grupo.suministros|length != 1 %}s{% endif %}
+            </span>
+        </div>
+
+        <!-- Table -->
+        <div class="table-scroll">
+            <table class="prog-table">
+                <thead>
+                    <tr>
+                        <th>N° OT</th>
+                        <th>Suministro</th>
+                        <th>Medidor</th>
+                        <th>Distrito</th>
+                        <th>Hor. Prog.</th>
+                        <th>Hor. Fin Prog.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in grupo.suministros %}
+                    <tr>
+                        <td class="cell-code">{{ s.no_ot|default:"—" }}</td>
+                        <td>
+                            <span class="cell-code">{{ s.suministro }}</span>
+                            {% if s.tipo_suministro == 'ADICIONAL' %}
+                            <span class="badge-adic">ADIC</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:#475569;">{{ s.medidor|default:"—" }}</td>
+                        <td style="color:#475569;">{{ s.distrito.nombre_distrito|default:"—" }}</td>
+                        <td class="cell-hora">
+                            {% if s.hora_inicio_programada %}
+                                {{ s.hora_inicio_programada|time:"H:i" }}
+                            {% else %}
+                                <span style="color:#cbd5e1;font-style:italic;">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="cell-hora">
+                            {% if s.hora_fin_programada %}
+                                {{ s.hora_fin_programada|time:"H:i" }}
+                            {% else %}
+                                <span style="color:#cbd5e1;font-style:italic;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    {% endfor %}
+
 </div>
 {% endif %}
 {% endfor %}

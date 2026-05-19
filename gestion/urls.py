@@ -22,6 +22,7 @@ urlpatterns = [
          name='descargar_plantilla_importacion'),
     path('mapa/suministros/', views.mapa_suministros, name='mapa_suministros'),
     
+    path('programacion/', views.programacion_list, name='programacion_list'),
     path('liquidacion/', views.liquidacion_list, name='liquidacion_list'),
     
     path('liquidacion/descargar-excel/', views.descargar_excel_liquidacion, name='descargar_excel_liquidacion'),

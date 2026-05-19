@@ -1244,6 +1244,46 @@ def mapa_suministros(request):
 
 
 # =============================================================================
+# PROGRAMACIÓN
+# =============================================================================
+
+@login_required
+def programacion_list(request):
+    from datetime import timedelta
+
+    hoy = timezone.localdate()
+    ayer = hoy - timedelta(days=1)
+
+    suministros = (
+        Suministro.objects
+        .filter(
+            fecha_programada__in=[hoy, ayer],
+            estado_suministro__estado_suministro='ASIGNADO'
+        )
+        .select_related('sst', 'sst__distrito', 'estado_suministro', 'distrito')
+        .order_by('fecha_programada', 'sst__sst', 'item')
+    )
+
+    # Agrupar por fecha y luego por SST
+    dias = {
+        'hoy':  {'label': f'Hoy — {hoy.strftime("%d/%m/%Y")}',  'ssts': {}},
+        'ayer': {'label': f'Ayer — {ayer.strftime("%d/%m/%Y")}', 'ssts': {}},
+    }
+
+    for s in suministros:
+        clave = 'hoy' if s.fecha_programada == hoy else 'ayer'
+        sst_codigo = s.sst.sst
+        if sst_codigo not in dias[clave]['ssts']:
+            dias[clave]['ssts'][sst_codigo] = {'sst': s.sst, 'suministros': []}
+        dias[clave]['ssts'][sst_codigo]['suministros'].append(s)
+
+    return render(request, 'gestion/programacion.html', {
+        'dias': dias,
+        'total': suministros.count(),
+    })
+
+
+# =============================================================================
 # LIQUIDACIÓN
 # =============================================================================
 

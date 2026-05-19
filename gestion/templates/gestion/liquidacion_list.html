@@ -662,14 +662,6 @@ function autoGuardarObservacion(textarea) {
     }, 900);
 }
 
-// ── Buscar ──────────────────────────────────────────────
-document.getElementById('search-input').addEventListener('input', function () {
-    const q = this.value.toLowerCase();
-    document.querySelectorAll('#liq-table tbody tr[data-sst]').forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-});
-
 // ── Al cargar: ordenar la tabla con el estado actual ────
 document.addEventListener('DOMContentLoaded', () => {
     reordenarTabla();

@@ -1247,6 +1247,7 @@ def mapa_suministros(request):
 # LIQUIDACIÓN
 # =============================================================================
 
+@login_required
 def liquidacion_list(request):
     ssts = SST.objects.select_related(
         'estado_sst', 'estado_liquidacion', 'distrito'
@@ -1291,22 +1292,24 @@ def liquidacion_list(request):
     })
 
 
+@login_required
 @csrf_protect
 @require_POST
 def cambiar_estado_liquidacion(request, sst_id):
     sst = get_object_or_404(SST, id=sst_id)
     estado = get_object_or_404(EstadoLiquidacion, id=request.POST.get('estado_liquidacion_id'))
     sst.estado_liquidacion = estado
-    sst.save()
+    sst.save(update_fields=['estado_liquidacion'])
     return JsonResponse({'success': True, 'estado': estado.estado, 'color': estado.color})
 
 
+@login_required
 @csrf_protect
 @require_POST
 def actualizar_observacion_liquidacion(request, sst_id):
     sst = get_object_or_404(SST, id=sst_id)
     sst.observacion = request.POST.get('observacion', '')
-    sst.save()
+    sst.save(update_fields=['observacion'])
     return JsonResponse({'success': True})
 
 

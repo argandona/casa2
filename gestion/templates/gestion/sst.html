@@ -245,33 +245,8 @@
     </div>
 </div>
 
-<script>
-// Mostrar loading al subir archivo
-document.getElementById('excel_upload').addEventListener('change', function() {
-    if (this.files.length > 0) {
-        document.getElementById('loading').style.display = 'flex';
-    }
-});
-</script>
+{% endblock %}
 
-<style>
-/* Estilos adicionales para mejor apariencia */
-select:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-input:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-table {
-    border-spacing: 0;
-}
-
-tbody tr:last-child td {
-    border-bottom: 0;
-}
-</style>
+{% block extra_js %}
+<script src="{% static 'js/sst.js' %}"></script>
 {% endblock %}

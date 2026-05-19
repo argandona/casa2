@@ -1,4 +1,4 @@
- /* Estilos personalizados */
+/* Estilos personalizados */
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -14,6 +14,15 @@ button:hover, a.button:hover {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+
+/* Estilos generales de formularios y tablas */
+select:focus, input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+table { border-spacing: 0; }
+tbody tr:last-child td { border-bottom: 0; }
 
 /* Estilos adicionales para responsividad */
 @media (max-width: 767px) {

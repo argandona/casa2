@@ -88,6 +88,7 @@
                         <th>Distrito</th>
                         <th>Hor. Prog.</th>
                         <th>Hor. Fin Prog.</th>
+                        <th>Ejecutado por</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -116,6 +117,7 @@
                                 <span style="color:#cbd5e1;font-style:italic;">—</span>
                             {% endif %}
                         </td>
+                        <td style="color:#475569;">{{ s.ejecutado_por|default:"—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

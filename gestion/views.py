@@ -625,15 +625,20 @@ def cargar_excel_suministros(request):
                             ejecutado_por = str(row.get('Ejecutado Por', '')).strip() if pd.notna(row.get('Ejecutado Por')) else None
                             observacion_contratista = str(row.get('Observación Contratista', '')).strip() if pd.notna(row.get('Observación Contratista')) else None
 
-                            def parse_fecha(val):
+                            advertencias_fila = []
+
+                            def parse_fecha(val, nombre_col):
                                 if not pd.notna(val):
                                     return None
                                 ts = pd.to_datetime(val, errors='coerce')
-                                return None if pd.isna(ts) else ts.date()
+                                if pd.isna(ts):
+                                    advertencias_fila.append(f"'{nombre_col}' tiene valor inválido: '{val}'")
+                                    return None
+                                return ts.date()
 
-                            fecha_primer_envio = parse_fecha(row.get('Fecha Primer Envío'))
-                            fecha_programada = parse_fecha(row.get('Fec. Prog.'))
-                            fecha_ejecucion = parse_fecha(row.get('Fecha Ejecución'))
+                            fecha_primer_envio = parse_fecha(row.get('Fecha Primer Envío'), 'Fecha Primer Envío')
+                            fecha_programada = parse_fecha(row.get('Fec. Prog.'), 'Fec. Prog.')
+                            fecha_ejecucion = parse_fecha(row.get('Fecha Ejecución'), 'Fecha Ejecución')
 
                             def parsear_hora(valor):
                                 import datetime as _dt
@@ -654,6 +659,9 @@ def cargar_excel_suministros(request):
 
                             hora_inicio_prog = parsear_hora(row.get('Hor. Prog.') if pd.notna(row.get('Hor. Prog.')) else None)
                             hora_fin_prog = parsear_hora(row.get('Hor. Fin. Prog.') if pd.notna(row.get('Hor. Fin. Prog.')) else None)
+
+                            if advertencias_fila:
+                                errores.append(f"Fila {index + 2}: {'; '.join(advertencias_fila)} (se guardó vacío)")
 
                             distrito_suministro, _ = Distrito.objects.get_or_create(nombre_distrito=distrito_nombre)
 

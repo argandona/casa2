@@ -606,6 +606,7 @@ def cargar_excel_suministros(request):
                     ssts_procesadas.add(sst.id)
 
                     for index, row in suministros_ot.iterrows():
+                        sid = transaction.savepoint()
                         try:
                             item = int(row['Item']) if pd.notna(row['Item']) else 0
                             no_ot = str(row['No. OT']).strip() if pd.notna(row['No. OT']) else ''
@@ -624,9 +625,15 @@ def cargar_excel_suministros(request):
                             ejecutado_por = str(row.get('Ejecutado Por', '')).strip() if pd.notna(row.get('Ejecutado Por')) else None
                             observacion_contratista = str(row.get('Observación Contratista', '')).strip() if pd.notna(row.get('Observación Contratista')) else None
 
-                            fecha_primer_envio = pd.to_datetime(row.get('Fecha Primer Envío'), errors='coerce') if pd.notna(row.get('Fecha Primer Envío')) else None
-                            fecha_programada = pd.to_datetime(row.get('Fec. Prog.'), errors='coerce') if pd.notna(row.get('Fec. Prog.')) else None
-                            fecha_ejecucion = pd.to_datetime(row.get('Fecha Ejecución'), errors='coerce') if pd.notna(row.get('Fecha Ejecución')) else None
+                            def parse_fecha(val):
+                                if not pd.notna(val):
+                                    return None
+                                ts = pd.to_datetime(val, errors='coerce')
+                                return None if pd.isna(ts) else ts.date()
+
+                            fecha_primer_envio = parse_fecha(row.get('Fecha Primer Envío'))
+                            fecha_programada = parse_fecha(row.get('Fec. Prog.'))
+                            fecha_ejecucion = parse_fecha(row.get('Fecha Ejecución'))
 
                             def parsear_hora(valor):
                                 import datetime as _dt
@@ -689,7 +696,9 @@ def cargar_excel_suministros(request):
                                 )
                                 suministros_creados += 1
 
+                            transaction.savepoint_commit(sid)
                         except Exception as e:
+                            transaction.savepoint_rollback(sid)
                             errores.append(f"Fila {index + 2}: {e}")
 
                 except Exception as e:

@@ -107,7 +107,8 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
     }
 
     try {
-        const response = await fetch(`/suministros/${suministroId}/actualizar/`, {
+        const actualizarUrl = SUMINISTROS_URLS.actualizarTpl.replace('/0/', `/${suministroId}/`);
+        const response = await fetch(actualizarUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             body: JSON.stringify(data)
@@ -222,7 +223,8 @@ async function eliminarSuministro(suministroId, nombreSuministro) {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
     try {
-        const response = await fetch(`/suministros/${suministroId}/eliminar/`, {
+        const eliminarUrl = SUMINISTROS_URLS.eliminarTpl.replace('/0/', `/${suministroId}/`);
+        const response = await fetch(eliminarUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
         });

@@ -1098,8 +1098,9 @@ def descargar_excel_modulo(request):
 @login_required
 def reporte_productividad(request):
     """Reporte en formato MATRIZ: fechas en filas, ejecutores en columnas."""
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
+    hoy = timezone.localdate()
+    fecha_inicio = request.GET.get('fecha_inicio') or hoy.replace(day=1).isoformat()
+    fecha_fin = request.GET.get('fecha_fin') or hoy.isoformat()
 
     suministros = Suministro.objects.filter(
         ejecutado_por__isnull=False,
@@ -1123,17 +1124,16 @@ def reporte_productividad(request):
     }
 
     matriz = defaultdict(
-    lambda: defaultdict(
-        lambda: {
-            'monto': Decimal('0.00'),
-            'ssts': set()
-        }
+        lambda: defaultdict(
+            lambda: {'monto': Decimal('0.00'), 'count': 0}
+        )
     )
-)
     ejecutores_set = set()
-    totales_por_ejecutor = defaultdict(lambda: Decimal('0.00'))
+    totales_monto_por_ejecutor = defaultdict(lambda: Decimal('0.00'))
+    totales_count_por_ejecutor = defaultdict(int)
     totales_por_fecha = defaultdict(lambda: Decimal('0.00'))
     total_general = Decimal('0.00')
+    total_count_general = 0
     fechas_ordenadas = []
     fechas_formateadas = {}
 
@@ -1147,41 +1147,144 @@ def reporte_productividad(request):
             fechas_ordenadas.append(fecha)
 
         matriz[fecha][ejecutor]['monto'] += monto
-        matriz[fecha][ejecutor]['ssts'].add(s.sst_id)
+        matriz[fecha][ejecutor]['count'] += 1
         ejecutores_set.add(ejecutor)
-        totales_por_ejecutor[ejecutor] += monto
+        totales_monto_por_ejecutor[ejecutor] += monto
+        totales_count_por_ejecutor[ejecutor] += 1
         totales_por_fecha[fecha] += monto
         total_general += monto
+        total_count_general += 1
 
     ejecutores = sorted(ejecutores_set)
     fechas_ordenadas = sorted(set(fechas_ordenadas))
 
     reporte = [
-    {
-        'fecha': fechas_formateadas[fecha],
-
-        'montos': [
-            {
-                'monto': matriz[fecha][ejecutor]['monto'],
-                'cantidad': len(matriz[fecha][ejecutor]['ssts'])
-            }
-            for ejecutor in ejecutores
-        ],
-
-        'total': totales_por_fecha[fecha],
-    }
-    for fecha in fechas_ordenadas
-]
+        {
+            'fecha': fechas_formateadas[fecha],
+            'montos': [
+                {
+                    'monto': matriz[fecha][ejecutor]['monto'],
+                    'count': matriz[fecha][ejecutor]['count'],
+                }
+                for ejecutor in ejecutores
+            ],
+            'total': totales_por_fecha[fecha],
+        }
+        for fecha in fechas_ordenadas
+    ]
 
     context = {
         'reporte': reporte,
         'ejecutores': ejecutores,
-        'totales_por_ejecutor': [totales_por_ejecutor[e] for e in ejecutores],
+        'totales_monto_por_ejecutor': [totales_monto_por_ejecutor[e] for e in ejecutores],
+        'totales_count_por_ejecutor': [totales_count_por_ejecutor[e] for e in ejecutores],
         'total_general': total_general,
+        'total_count_general': total_count_general,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
     }
     return render(request, 'gestion/reporte_productividad.html', context)
+
+
+@login_required
+def descargar_excel_productividad(request):
+    hoy = timezone.localdate()
+    fecha_inicio = request.GET.get('fecha_inicio') or hoy.replace(day=1).isoformat()
+    fecha_fin = request.GET.get('fecha_fin') or hoy.isoformat()
+
+    suministros = Suministro.objects.filter(
+        ejecutado_por__isnull=False,
+        fecha_ejecucion__isnull=False,
+        estado_suministro__estado_suministro__in=['EJECUTADO', 'DEVUELTO', 'ADMISIBLE'],
+    ).exclude(ejecutado_por='')
+    if fecha_inicio:
+        suministros = suministros.filter(fecha_ejecucion__gte=fecha_inicio)
+    if fecha_fin:
+        suministros = suministros.filter(fecha_ejecucion__lte=fecha_fin)
+    suministros = suministros.select_related('estado_suministro').order_by('fecha_ejecucion', 'ejecutado_por')
+
+    meses = {1:'enero',2:'febrero',3:'marzo',4:'abril',5:'mayo',6:'junio',
+             7:'julio',8:'agosto',9:'septiembre',10:'octubre',11:'noviembre',12:'diciembre'}
+
+    matriz = defaultdict(lambda: defaultdict(lambda: {'monto': Decimal('0.00'), 'count': 0}))
+    ejecutores_set = set()
+    totales_monto = defaultdict(lambda: Decimal('0.00'))
+    totales_count = defaultdict(int)
+    totales_por_fecha = defaultdict(lambda: Decimal('0.00'))
+    total_general = Decimal('0.00')
+    total_count_general = 0
+    fechas_ordenadas = []
+    fechas_formateadas = {}
+
+    for s in suministros:
+        fecha = s.fecha_ejecucion
+        ejecutor = s.ejecutado_por.strip().title()
+        monto = s.monto or Decimal('0.00')
+        if fecha not in fechas_formateadas:
+            fechas_formateadas[fecha] = f"{fecha.day:02d} de {meses[fecha.month]} de {fecha.year}"
+            fechas_ordenadas.append(fecha)
+        matriz[fecha][ejecutor]['monto'] += monto
+        matriz[fecha][ejecutor]['count'] += 1
+        ejecutores_set.add(ejecutor)
+        totales_monto[ejecutor] += monto
+        totales_count[ejecutor] += 1
+        totales_por_fecha[fecha] += monto
+        total_general += monto
+        total_count_general += 1
+
+    ejecutores = sorted(ejecutores_set)
+    fechas_ordenadas = sorted(set(fechas_ordenadas))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Productividad"
+
+    hdr_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+    hdr_font = Font(bold=True, color="FFFFFF")
+    tot_fill = PatternFill(start_color="DBEAFE", end_color="DBEAFE", fill_type="solid")
+    tot_font = Font(bold=True, color="1D4ED8")
+    center = Alignment(horizontal='center')
+
+    headers = ['Fecha'] + ejecutores + ['Total día']
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = hdr_fill
+        cell.font = hdr_font
+        cell.alignment = center
+
+    for row_idx, fecha in enumerate(fechas_ordenadas, 2):
+        ws.cell(row=row_idx, column=1, value=fechas_formateadas[fecha])
+        for col_idx, ejecutor in enumerate(ejecutores, 2):
+            d = matriz[fecha][ejecutor]
+            ws.cell(row=row_idx, column=col_idx,
+                    value=f"S/ {d['monto']:.2f} ({d['count']})" if d['count'] > 0 else '-').alignment = center
+        ws.cell(row=row_idx, column=len(ejecutores)+2,
+                value=f"S/ {totales_por_fecha[fecha]:.2f}").alignment = center
+
+    total_row = len(fechas_ordenadas) + 2
+    lbl = ws.cell(row=total_row, column=1, value='TOTAL')
+    lbl.font = tot_font
+    for col_idx, ejecutor in enumerate(ejecutores, 2):
+        cell = ws.cell(row=total_row, column=col_idx,
+                       value=f"S/ {totales_monto[ejecutor]:.2f} ({totales_count[ejecutor]})")
+        cell.fill = tot_fill
+        cell.font = tot_font
+        cell.alignment = center
+    cell = ws.cell(row=total_row, column=len(ejecutores)+2,
+                   value=f"S/ {total_general:.2f} ({total_count_general})")
+    cell.fill = tot_fill
+    cell.font = tot_font
+    cell.alignment = center
+
+    ws.column_dimensions['A'].width = 24
+    for col in range(2, len(ejecutores) + 3):
+        ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = 22
+
+    filename = f"productividad_{fecha_inicio}_{fecha_fin}.xlsx"
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
 
 
 # =============================================================================

@@ -1,113 +1,172 @@
 {% extends 'base.html' %}
-{% block title %}Reporte Productividad - Matriz{% endblock %}
+{% load static %}
+
+{% block title %}Reporte Productividad — Encossa{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Reporte de Productividad - Matriz</h1>
 
-    <!-- Filtros opcionales -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <form method="GET" class="flex gap-4 items-end">
-            <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Inicio</label>
-                <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" 
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Reporte de Productividad</h1>
+        {% if reporte %}
+        <a href="{% url 'descargar_excel_productividad' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}"
+           class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition">
+            <i class="fas fa-file-excel"></i> Exportar Excel
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+        <form method="GET" class="flex flex-wrap gap-4 items-end">
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Fecha Inicio</label>
+                <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}"
+                       class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
             </div>
-            <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Fin</label>
-                <input type="date" name="fecha_fin" value="{{ fecha_fin }}" 
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Fecha Fin</label>
+                <input type="date" name="fecha_fin" value="{{ fecha_fin }}"
+                       class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
             </div>
-            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition">
-                Filtrar
-            </button>
-            <a href="{% url 'reporte_productividad' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold transition">
-                Limpiar
-            </a>
+            <div class="flex gap-2">
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold text-sm transition">
+                    Filtrar
+                </button>
+                <a href="{% url 'reporte_productividad' %}"
+                   class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold text-sm transition">
+                    Limpiar
+                </a>
+            </div>
+            <!-- Accesos rápidos -->
+            <div class="flex gap-2 ml-auto">
+                <button type="button" onclick="setMesActual()"
+                        class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition border border-blue-200">
+                    Este mes
+                </button>
+                <button type="button" onclick="setMesAnterior()"
+                        class="bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition border border-gray-200">
+                    Mes anterior
+                </button>
+            </div>
         </form>
     </div>
 
     {% if reporte %}
-        <div class="bg-white rounded-xl shadow-lg overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-300">
-                <thead class="bg-blue-500 text-white">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-bold sticky left-0 bg-blue-500">Fecha</th>
-                        {% for ejecutor in ejecutores %}
-                            <th class="px-4 py-3 text-center font-bold whitespace-nowrap">{{ ejecutor }}</th>
-                        {% endfor %}
-                        <th class="px-4 py-3 text-center font-bold bg-blue-600">Total</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for fila in reporte %}
-                    <tr class="hover:bg-gray-50 transition">
-                        <!-- Fecha (fija a la izquierda) -->
-                        <td class="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap sticky left-0 bg-white">
-                            {{ fila.fecha }}
-                        </td>
-                        
-                        <!-- Montos por ejecutor -->
-                        {% for data in fila.montos %}
-<td class="
-    px-4 py-3 text-center font-bold whitespace-nowrap
-    {% if data.monto > 1000 %}
-        
-    bg-green-200 text-green-900
-    {% elif data.monto > 500 %}
-        bg-green-100 text-green-800
-    {% elif data.monto > 0 %}
-        bg-green-50 text-green-700
-    {% else %}
-        text-gray-400
-    {% endif %}
-">
 
-    {% if data.monto > 0 %}
-        S/ {{ data.monto|floatformat:2 }}
-    {% else %}
-        -
-    {% endif %}
+    <!-- Resumen rápido -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Total facturado</p>
+            <p class="text-xl font-bold text-green-700">S/ {{ total_general|floatformat:2 }}</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Suministros</p>
+            <p class="text-xl font-bold text-blue-700">{{ total_count_general }}</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Días con ejecución</p>
+            <p class="text-xl font-bold text-gray-800">{{ reporte|length }}</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Ejecutores</p>
+            <p class="text-xl font-bold text-gray-800">{{ ejecutores|length }}</p>
+        </div>
+    </div>
 
-    <span class="text-xs text-gray-500 font-semibold">
-        ({{ data.cantidad }})
-    </span>
-
-</td>
-{% endfor %}
-                        
-                        <!-- Total por fecha -->
-                        <td class="px-4 py-3 text-center font-bold text-green-700 bg-green-50">
-                            S/ {{ fila.total|floatformat:2 }}
-                        </td>
-                    </tr>
+    <!-- Tabla matriz -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead>
+                <tr class="bg-blue-600 text-white">
+                    <th class="px-4 py-3 text-left font-bold whitespace-nowrap sticky left-0 bg-blue-600">Fecha</th>
+                    {% for ejecutor in ejecutores %}
+                    <th class="px-4 py-3 text-center font-bold whitespace-nowrap">{{ ejecutor }}</th>
                     {% endfor %}
-                </tbody>
-                
-                <!-- Fila de TOTALES POR EJECUTOR -->
-                <tfoot class="bg-gray-100 font-bold">
-                    <tr>
-                        <td class="px-4 py-3 text-right text-gray-800 sticky left-0 bg-gray-100">
-                            TOTAL POR EJECUTOR
-                        </td>
-                        {% for total in totales_por_ejecutor %}
-                            <td class="px-4 py-3 text-center text-blue-700">
-                                S/ {{ total|floatformat:2 }}
-                            </td>
-                        {% endfor %}
-                        <td class="px-4 py-3 text-center text-green-700 bg-green-100 text-lg">
-                            S/ {{ total_general|floatformat:2 }}
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
+                    <th class="px-4 py-3 text-center font-bold whitespace-nowrap bg-blue-700">Total día</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for fila in reporte %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap sticky left-0 bg-white">
+                        {{ fila.fecha }}
+                    </td>
+                    {% for data in fila.montos %}
+                    <td class="px-4 py-3 text-center whitespace-nowrap
+                        {% if data.monto > 1000 %}bg-green-100 text-green-900 font-bold
+                        {% elif data.monto > 500 %}bg-green-50 text-green-800 font-semibold
+                        {% elif data.monto > 0 %}text-green-700
+                        {% else %}text-gray-300{% endif %}">
+                        {% if data.monto > 0 %}
+                            S/ {{ data.monto|floatformat:2 }}
+                            <span class="text-xs text-gray-400 font-normal">({{ data.count }})</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    {% endfor %}
+                    <td class="px-4 py-3 text-center font-bold text-green-700 bg-green-50 whitespace-nowrap">
+                        S/ {{ fila.total|floatformat:2 }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-blue-50 border-t-2 border-blue-200">
+                <!-- Fila monto total -->
+                <tr>
+                    <td class="px-4 py-3 font-bold text-gray-700 sticky left-0 bg-blue-50 whitespace-nowrap">
+                        Monto total
+                    </td>
+                    {% for total in totales_monto_por_ejecutor %}
+                    <td class="px-4 py-3 text-center font-bold text-blue-700 whitespace-nowrap">
+                        S/ {{ total|floatformat:2 }}
+                    </td>
+                    {% endfor %}
+                    <td class="px-4 py-3 text-center font-bold text-green-700 bg-green-100 whitespace-nowrap">
+                        S/ {{ total_general|floatformat:2 }}
+                    </td>
+                </tr>
+                <!-- Fila cantidad total -->
+                <tr class="border-t border-blue-100">
+                    <td class="px-4 py-3 font-bold text-gray-700 sticky left-0 bg-blue-50 whitespace-nowrap">
+                        Suministros
+                    </td>
+                    {% for count in totales_count_por_ejecutor %}
+                    <td class="px-4 py-3 text-center font-semibold text-gray-600 whitespace-nowrap">
+                        {{ count }}
+                    </td>
+                    {% endfor %}
+                    <td class="px-4 py-3 text-center font-bold text-blue-700 bg-green-100 whitespace-nowrap">
+                        {{ total_count_general }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
     {% else %}
-        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-lg">
-            <p class="text-yellow-700 font-medium">
-                No se encontraron registros de suministros ejecutados o devueltos.
-            </p>
-        </div>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
+        <i class="fas fa-chart-bar text-yellow-400 text-3xl mb-3 block"></i>
+        <p class="text-yellow-700 font-semibold">Sin registros para el período seleccionado</p>
+        <p class="text-yellow-600 text-sm mt-1">Ajusta las fechas para ver suministros ejecutados</p>
+    </div>
     {% endif %}
+
 </div>
+
+<script>
+function setMesActual() {
+    const hoy = new Date();
+    const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    document.querySelector('[name="fecha_inicio"]').value = inicio.toISOString().slice(0,10);
+    document.querySelector('[name="fecha_fin"]').value = hoy.toISOString().slice(0,10);
+}
+function setMesAnterior() {
+    const hoy = new Date();
+    const inicio = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+    const fin = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+    document.querySelector('[name="fecha_inicio"]').value = inicio.toISOString().slice(0,10);
+    document.querySelector('[name="fecha_fin"]').value = fin.toISOString().slice(0,10);
+}
+</script>
 {% endblock %}

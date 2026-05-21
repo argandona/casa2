@@ -628,17 +628,25 @@ def cargar_excel_suministros(request):
                             fecha_programada = pd.to_datetime(row.get('Fec. Prog.'), errors='coerce') if pd.notna(row.get('Fec. Prog.')) else None
                             fecha_ejecucion = pd.to_datetime(row.get('Fecha Ejecución'), errors='coerce') if pd.notna(row.get('Fecha Ejecución')) else None
 
-                            hora_inicio_prog = hora_fin_prog = None
-                            if pd.notna(row.get('Hor. Prog.')):
-                                try:
-                                    hora_inicio_prog = pd.to_datetime(str(row['Hor. Prog.']), format='%H:%M:%S', errors='coerce').time()
-                                except Exception:
-                                    pass
-                            if pd.notna(row.get('Hor. Fin. Prog.')):
-                                try:
-                                    hora_fin_prog = pd.to_datetime(str(row['Hor. Fin. Prog.']), format='%H:%M:%S', errors='coerce').time()
-                                except Exception:
-                                    pass
+                            def parsear_hora(valor):
+                                import datetime as _dt
+                                if valor is None:
+                                    return None
+                                if isinstance(valor, _dt.time):
+                                    return valor
+                                if hasattr(valor, 'time'):
+                                    return valor.time()
+                                s = str(valor).strip().upper()
+                                s = s.replace('A.M.', 'AM').replace('P.M.', 'PM')
+                                for fmt in ('%I:%M %p', '%I:%M%p', '%H:%M:%S', '%H:%M'):
+                                    try:
+                                        return _dt.datetime.strptime(s, fmt).time()
+                                    except ValueError:
+                                        pass
+                                return None
+
+                            hora_inicio_prog = parsear_hora(row.get('Hor. Prog.') if pd.notna(row.get('Hor. Prog.')) else None)
+                            hora_fin_prog = parsear_hora(row.get('Hor. Fin. Prog.') if pd.notna(row.get('Hor. Fin. Prog.')) else None)
 
                             distrito_suministro, _ = Distrito.objects.get_or_create(nombre_distrito=distrito_nombre)
 

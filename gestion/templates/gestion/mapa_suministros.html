@@ -2,10 +2,7 @@
 
 {% block extra_css %}
 <style>
-    #map {
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
+    /* border-radius y shadow se aplican inline para permitir el panel extra */
     
     .map-controls {
         background: white;
@@ -86,6 +83,24 @@
     .info-value {
         color: #1f2937;
     }
+
+    .coord-panel {
+        background: white;
+        padding: 14px 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-top: 12px;
+    }
+
+    .coord-marker-pulse {
+        animation: pulse 1s ease-out;
+    }
+
+    @keyframes pulse {
+        0%   { transform: scale(0.5); opacity: 0; }
+        60%  { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(1);   opacity: 1; }
+    }
 </style>
 {% endblock %}
 
@@ -111,7 +126,31 @@
                 </div>
             </div>
             
-            <div id="map" class="w-full h-[calc(100vh-200px)]"></div>
+            <!-- Panel buscar por coordenada -->
+            <div class="coord-panel">
+                <p class="text-sm font-semibold text-gray-700 mb-2">Buscar coordenada</p>
+                <div class="flex flex-wrap gap-2 items-end">
+                    <div>
+                        <label class="text-xs text-gray-500">Latitud</label>
+                        <input id="input-lat" type="text" placeholder="-12.0464"
+                               class="block border border-gray-300 rounded px-2 py-1 text-sm w-32 focus:outline-none focus:border-blue-400">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Longitud</label>
+                        <input id="input-lng" type="text" placeholder="-77.0428"
+                               class="block border border-gray-300 rounded px-2 py-1 text-sm w-32 focus:outline-none focus:border-blue-400">
+                    </div>
+                    <button id="btn-marcar" class="px-4 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 transition">
+                        Marcar
+                    </button>
+                    <button id="btn-limpiar-coord" class="px-4 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition hidden">
+                        Quitar
+                    </button>
+                </div>
+                <p id="coord-error" class="text-xs text-red-500 mt-1 hidden">Coordenadas inválidas.</p>
+            </div>
+
+            <div id="map" class="w-full mt-3" style="height: calc(100vh - 260px); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);"></div>
         </div>
         
         <!-- Columna lateral: Leyenda -->
@@ -332,6 +371,72 @@ function generarLeyenda() {
 window.gm_authFailure = function() {
     alert('Error de autenticación con Google Maps. Verifica tu API key.');
 };
+
+// --- Marcador de coordenada manual ---
+let coordMarker = null;
+
+function marcarCoordenada() {
+    const rawLat = document.getElementById('input-lat').value.trim().replace(',', '.');
+    const rawLng = document.getElementById('input-lng').value.trim().replace(',', '.');
+    const errEl = document.getElementById('coord-error');
+    const lat = parseFloat(rawLat);
+    const lng = parseFloat(rawLng);
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        errEl.classList.remove('hidden');
+        return;
+    }
+    errEl.classList.add('hidden');
+
+    if (coordMarker) coordMarker.setMap(null);
+
+    const pos = { lat, lng };
+    coordMarker = new google.maps.Marker({
+        position: pos,
+        map: map,
+        title: `${lat}, ${lng}`,
+        icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#ef4444',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2.5
+        },
+        zIndex: 9999,
+        animation: google.maps.Animation.DROP
+    });
+
+    const iw = new google.maps.InfoWindow({
+        content: `<div style="font-size:13px; padding:4px 8px;">
+                    <strong>Coordenada buscada</strong><br>
+                    Lat: ${lat}<br>Lng: ${lng}
+                  </div>`
+    });
+    coordMarker.addListener('click', () => iw.open(map, coordMarker));
+
+    map.panTo(pos);
+    map.setZoom(17);
+    document.getElementById('btn-limpiar-coord').classList.remove('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-marcar').addEventListener('click', marcarCoordenada);
+
+    ['input-lat', 'input-lng'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => {
+            if (e.key === 'Enter') marcarCoordenada();
+        });
+    });
+
+    document.getElementById('btn-limpiar-coord').addEventListener('click', () => {
+        if (coordMarker) { coordMarker.setMap(null); coordMarker = null; }
+        document.getElementById('input-lat').value = '';
+        document.getElementById('input-lng').value = '';
+        document.getElementById('btn-limpiar-coord').classList.add('hidden');
+        document.getElementById('coord-error').classList.add('hidden');
+    });
+});
 </script>
 
 <!-- Google Maps API con Clustering -->

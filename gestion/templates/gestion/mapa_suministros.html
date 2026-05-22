@@ -129,17 +129,9 @@
             <!-- Panel buscar por coordenada -->
             <div class="coord-panel">
                 <p class="text-sm font-semibold text-gray-700 mb-2">Buscar coordenada</p>
-                <div class="flex flex-wrap gap-2 items-end">
-                    <div>
-                        <label class="text-xs text-gray-500">Latitud</label>
-                        <input id="input-lat" type="text" placeholder="-12.0464"
-                               class="block border border-gray-300 rounded px-2 py-1 text-sm w-32 focus:outline-none focus:border-blue-400">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500">Longitud</label>
-                        <input id="input-lng" type="text" placeholder="-77.0428"
-                               class="block border border-gray-300 rounded px-2 py-1 text-sm w-32 focus:outline-none focus:border-blue-400">
-                    </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <input id="input-coords" type="text" placeholder="-12.096057   -76.887220"
+                           class="border border-gray-300 rounded px-2 py-1 text-sm w-64 focus:outline-none focus:border-blue-400">
                     <button id="btn-marcar" class="px-4 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 transition">
                         Marcar
                     </button>
@@ -376,11 +368,11 @@ window.gm_authFailure = function() {
 let coordMarker = null;
 
 function marcarCoordenada() {
-    const rawLat = document.getElementById('input-lat').value.trim().replace(',', '.');
-    const rawLng = document.getElementById('input-lng').value.trim().replace(',', '.');
+    const raw = document.getElementById('input-coords').value.trim();
+    const parts = raw.split(/[\s,;]+/).filter(Boolean).map(p => p.replace(',', '.'));
     const errEl = document.getElementById('coord-error');
-    const lat = parseFloat(rawLat);
-    const lng = parseFloat(rawLng);
+    const lat = parseFloat(parts[0]);
+    const lng = parseFloat(parts[1]);
 
     if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         errEl.classList.remove('hidden');
@@ -423,16 +415,13 @@ function marcarCoordenada() {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-marcar').addEventListener('click', marcarCoordenada);
 
-    ['input-lat', 'input-lng'].forEach(id => {
-        document.getElementById(id).addEventListener('keydown', e => {
-            if (e.key === 'Enter') marcarCoordenada();
-        });
+    document.getElementById('input-coords').addEventListener('keydown', e => {
+        if (e.key === 'Enter') marcarCoordenada();
     });
 
     document.getElementById('btn-limpiar-coord').addEventListener('click', () => {
         if (coordMarker) { coordMarker.setMap(null); coordMarker = null; }
-        document.getElementById('input-lat').value = '';
-        document.getElementById('input-lng').value = '';
+        document.getElementById('input-coords').value = '';
         document.getElementById('btn-limpiar-coord').classList.add('hidden');
         document.getElementById('coord-error').classList.add('hidden');
     });

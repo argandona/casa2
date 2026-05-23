@@ -160,6 +160,7 @@ function setMesActual() {
     const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     document.querySelector('[name="fecha_inicio"]').value = inicio.toISOString().slice(0,10);
     document.querySelector('[name="fecha_fin"]').value = hoy.toISOString().slice(0,10);
+    document.querySelector('form').submit();
 }
 function setMesAnterior() {
     const hoy = new Date();
@@ -167,6 +168,7 @@ function setMesAnterior() {
     const fin = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
     document.querySelector('[name="fecha_inicio"]').value = inicio.toISOString().slice(0,10);
     document.querySelector('[name="fecha_fin"]').value = fin.toISOString().slice(0,10);
+    document.querySelector('form').submit();
 }
 </script>
 {% endblock %}

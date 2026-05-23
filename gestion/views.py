@@ -1381,36 +1381,37 @@ def programacion_list(request):
 
     hoy = timezone.localdate()
     ayer = hoy - timedelta(days=1)
-    antes_ayer = hoy - timedelta(days=2)
 
-    suministros = (
+    fecha_str = request.GET.get('fecha', '')
+    try:
+        fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        fecha = ayer
+
+    suministros_qs = (
         Suministro.objects
-        .filter(
-            fecha_programada__in=[hoy, ayer, antes_ayer],
-            estado_suministro__estado_suministro='ASIGNADO'
-        )
+        .filter(fecha_programada=fecha)
         .select_related('sst', 'sst__distrito', 'estado_suministro', 'distrito')
-        .order_by('fecha_programada', 'sst__sst', 'item')
+        .order_by('sst__sst', 'item')
     )
 
-    dias = [
-        {'clave': 'hoy',         'titulo': 'Hoy',            'fecha': hoy,         'ssts': {}, 'count': 0},
-        {'clave': 'ayer',        'titulo': 'Ayer',           'fecha': ayer,        'ssts': {}, 'count': 0},
-        {'clave': 'antes_ayer',  'titulo': 'Antes de ayer',  'fecha': antes_ayer,  'ssts': {}, 'count': 0},
-    ]
-    fecha_a_dia = {d['fecha']: d for d in dias}
-
-    for s in suministros:
-        dia = fecha_a_dia[s.fecha_programada]
+    ssts = {}
+    for s in suministros_qs:
         codigo = s.sst.sst
-        if codigo not in dia['ssts']:
-            dia['ssts'][codigo] = {'sst': s.sst, 'suministros': []}
-        dia['ssts'][codigo]['suministros'].append(s)
-        dia['count'] += 1
+        if codigo not in ssts:
+            ssts[codigo] = {'sst': s.sst, 'suministros': []}
+        ssts[codigo]['suministros'].append(s)
+
+    estados = EstadoSuministro.objects.all()
 
     return render(request, 'gestion/programacion.html', {
-        'dias': dias,
-        'total': suministros.count(),
+        'ssts': ssts,
+        'total': suministros_qs.count(),
+        'fecha': fecha,
+        'hoy': hoy,
+        'ayer': ayer,
+        'antes_ayer': hoy - timedelta(days=2),
+        'estados': estados,
     })
 
 

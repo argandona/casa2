@@ -380,6 +380,13 @@ def actualizar_suministro(request, suministro_id):
             except EstadoSuministro.DoesNotExist:
                 pass
 
+        # Fecha programada
+        fecha_programada = data.get('fecha_programada')
+        if fecha_programada:
+            suministro.fecha_programada = datetime.strptime(fecha_programada, '%Y-%m-%d').date()
+        elif fecha_programada == '':
+            suministro.fecha_programada = None
+
         # Fecha de ejecución
         fecha_ejecucion = data.get('fecha_ejecucion')
         if fecha_ejecucion:

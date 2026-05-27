@@ -23,12 +23,23 @@ class SuministroListView(generics.ListAPIView):
         sst = self.request.query_params.get('sst')
         estado = self.request.query_params.get('estado')
         fecha = self.request.query_params.get('fecha_programada')
+        ejecutado_por = self.request.query_params.get('ejecutado_por')
+        fecha_desde   = self.request.query_params.get('fecha_desde')
+        fecha_hasta   = self.request.query_params.get('fecha_hasta')
         if sst:
             qs = qs.filter(sst__sst=sst)
         if estado:
             qs = qs.filter(estado_suministro__estado_suministro__iexact=estado)
         if fecha:
             qs = qs.filter(fecha_programada=fecha)
+        if ejecutado_por:
+            qs = qs.filter(ejecutado_por__icontains=ejecutado_por)
+        if fecha_desde:
+            qs = qs.filter(fecha_programada__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(fecha_programada__lte=fecha_hasta)
+        if self.request.query_params.get('con_actividad'):
+            qs = qs.filter(actividad__isnull=False)
         return qs
 
 

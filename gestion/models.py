@@ -453,6 +453,9 @@ class Suministro(models.Model):
     contacto = models.CharField(max_length=100, blank=True, null=True)
     telefono = models.CharField(max_length=20, blank=True, null=True)
 
+    # Actividad
+    actividad = models.ForeignKey('Actividad', on_delete=models.PROTECT, null=True, blank=True, verbose_name="Actividad")
+
     # Estado y observaciones
     estado_suministro = models.ForeignKey('EstadoSuministro', on_delete=models.PROTECT, null=True, blank=True, verbose_name="Estado Suministro")
     observacion_cliente = models.TextField(blank=True, null=True)

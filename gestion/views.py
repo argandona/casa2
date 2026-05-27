@@ -681,6 +681,12 @@ def cargar_excel_suministros(request):
                             else:
                                 estado_sum = estado_suministro_default
 
+                            actividad_nombre = str(row.get('Actividad', '')).strip() if pd.notna(row.get('Actividad')) else ''
+                            if actividad_nombre:
+                                actividad_obj, _ = Actividad.objects.get_or_create(nombre_actividad=actividad_nombre)
+                            else:
+                                actividad_obj = None
+
                             campos = dict(
                                 item=item, no_ot=no_ot, medidor=medidor,
                                 marca_medidor=marca_medidor, fase=fase, potencia=potencia,
@@ -694,6 +700,7 @@ def cargar_excel_suministros(request):
                                 ejecutado_por=ejecutado_por, estado_suministro=estado_sum,
                                 observacion_contratista=observacion_contratista,
                                 Observacion_LDS=observacion_lds,
+                                actividad=actividad_obj,
                             )
 
                             existente = Suministro.objects.filter(

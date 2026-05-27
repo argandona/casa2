@@ -1405,7 +1405,7 @@ def programacion_list(request):
     suministros_qs = (
         Suministro.objects
         .filter(fecha_programada=fecha)
-        .select_related('sst', 'sst__distrito', 'estado_suministro', 'distrito')
+        .select_related('sst', 'sst__distrito', 'estado_suministro', 'distrito', 'actividad')
         .order_by('sst__sst', 'item')
     )
 

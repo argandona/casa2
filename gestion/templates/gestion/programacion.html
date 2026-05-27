@@ -94,6 +94,7 @@
                 <tr>
                     <th>N° OT</th>
                     <th>Suministro</th>
+                    <th>Actividad</th>
                     <th>Medidor</th>
                     <th>Distrito</th>
                     <th>Hor. Prog.</th>
@@ -113,6 +114,7 @@
                         <span class="badge-adic">ADIC</span>
                         {% endif %}
                     </td>
+                    <td style="color:#475569;">{{ s.actividad.nombre_actividad|default:"—" }}</td>
                     <td style="color:#475569;">{{ s.medidor|default:"—" }}</td>
                     <td style="color:#475569;">{{ s.distrito.nombre_distrito|default:"—" }}</td>
                     <td class="cell-hora">

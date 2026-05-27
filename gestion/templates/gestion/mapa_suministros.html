@@ -101,6 +101,64 @@
         60%  { transform: scale(1.2); opacity: 1; }
         100% { transform: scale(1);   opacity: 1; }
     }
+
+    .suministro-panel {
+        background: white;
+        padding: 14px 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-top: 12px;
+    }
+
+    .suministro-input-wrap {
+        position: relative;
+        flex: 1;
+        max-width: 320px;
+    }
+
+    .suministro-suggestions {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        max-height: 220px;
+        overflow-y: auto;
+        z-index: 1000;
+    }
+
+    .suggestion-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f3f4f6;
+        transition: background 0.15s;
+    }
+
+    .suggestion-item:hover {
+        background: #f0f9ff;
+    }
+
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+
+    .suggestion-num {
+        font-weight: 700;
+        color: #1f2937;
+        font-size: 13px;
+    }
+
+    .suggestion-dir {
+        color: #6b7280;
+        font-size: 11px;
+        margin-top: 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 </style>
 {% endblock %}
 
@@ -126,6 +184,23 @@
                 </div>
             </div>
             
+            <!-- Panel buscar por suministro -->
+            <div class="suministro-panel">
+                <p class="text-sm font-semibold text-gray-700 mb-2">Buscar suministro</p>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <div class="suministro-input-wrap">
+                        <input id="input-suministro" type="text" placeholder="Número o dirección..."
+                               class="border border-gray-300 rounded px-2 py-1 text-sm w-full focus:outline-none focus:border-blue-400"
+                               autocomplete="off">
+                        <div id="suministro-suggestions" class="suministro-suggestions hidden"></div>
+                    </div>
+                    <button id="btn-limpiar-suministro" class="px-4 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition hidden">
+                        Quitar
+                    </button>
+                </div>
+                <p id="suministro-error" class="text-xs text-red-500 mt-1 hidden">Suministro no encontrado.</p>
+            </div>
+
             <!-- Panel buscar por coordenada -->
             <div class="coord-panel">
                 <p class="text-sm font-semibold text-gray-700 mb-2">Buscar coordenada</p>
@@ -162,6 +237,7 @@ const suministros = JSON.parse('{{ suministros|escapejs }}');
 const sstsInfo = JSON.parse('{{ ssts_info|escapejs }}');
 let map;
 let markers = [];
+let infoWindows = [];
 let markerCluster;
 
 // Función para crear ícono SVG personalizado con el color de la SST
@@ -271,6 +347,8 @@ function initMap() {
             maxWidth: 320
         });
 
+        infoWindows.push(infoWindow);
+
         marker.addListener("click", () => {
             infoWindow.open(map, marker);
         });
@@ -364,6 +442,59 @@ window.gm_authFailure = function() {
     alert('Error de autenticación con Google Maps. Verifica tu API key.');
 };
 
+// --- Buscador de suministro ---
+let selectedSuministroIndex = null;
+let openInfoWindow = null;
+
+function buscarSuministro(query) {
+    if (!query || query.length < 2) return [];
+    const q = query.toLowerCase();
+    return suministros
+        .map((s, i) => ({ s, i }))
+        .filter(({ s }) =>
+            s.suministro.toLowerCase().includes(q) ||
+            s.direccion.toLowerCase().includes(q)
+        )
+        .slice(0, 8);
+}
+
+function irASuministro(index) {
+    const s = suministros[index];
+    const marker = markers[index];
+    const iw = infoWindows[index];
+
+    if (openInfoWindow) openInfoWindow.close();
+    if (selectedSuministroIndex !== null && selectedSuministroIndex !== index) {
+        const prev = suministros[selectedSuministroIndex];
+        markers[selectedSuministroIndex].setIcon(crearIconoPersonalizado(prev.color, 32));
+    }
+
+    selectedSuministroIndex = index;
+    marker.setIcon(crearIconoPersonalizado(s.color, 48));
+    map.panTo({ lat: s.latitud, lng: s.longitud });
+    map.setZoom(17);
+    iw.open(map, marker);
+    openInfoWindow = iw;
+
+    document.getElementById('input-suministro').value = s.suministro;
+    document.getElementById('btn-limpiar-suministro').classList.remove('hidden');
+    document.getElementById('suministro-suggestions').classList.add('hidden');
+    document.getElementById('suministro-error').classList.add('hidden');
+}
+
+function limpiarSuministro() {
+    if (openInfoWindow) { openInfoWindow.close(); openInfoWindow = null; }
+    if (selectedSuministroIndex !== null) {
+        const prev = suministros[selectedSuministroIndex];
+        markers[selectedSuministroIndex].setIcon(crearIconoPersonalizado(prev.color, 32));
+        selectedSuministroIndex = null;
+    }
+    document.getElementById('input-suministro').value = '';
+    document.getElementById('btn-limpiar-suministro').classList.add('hidden');
+    document.getElementById('suministro-error').classList.add('hidden');
+    document.getElementById('suministro-suggestions').classList.add('hidden');
+}
+
 // --- Marcador de coordenada manual ---
 let coordMarker = null;
 
@@ -413,6 +544,53 @@ function marcarCoordenada() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Buscador de suministro
+    const inputSuministro = document.getElementById('input-suministro');
+    const suggestionsEl = document.getElementById('suministro-suggestions');
+
+    inputSuministro.addEventListener('input', () => {
+        const resultados = buscarSuministro(inputSuministro.value);
+        if (resultados.length === 0) {
+            suggestionsEl.classList.add('hidden');
+            return;
+        }
+        suggestionsEl.innerHTML = resultados.map(({ s, i }) => `
+            <div class="suggestion-item" data-index="${i}">
+                <div class="suggestion-num">${s.suministro}</div>
+                <div class="suggestion-dir">${s.direccion}</div>
+            </div>
+        `).join('');
+        suggestionsEl.classList.remove('hidden');
+    });
+
+    suggestionsEl.addEventListener('click', e => {
+        const item = e.target.closest('.suggestion-item');
+        if (!item) return;
+        irASuministro(parseInt(item.dataset.index));
+    });
+
+    inputSuministro.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            const resultados = buscarSuministro(inputSuministro.value);
+            if (resultados.length > 0) {
+                irASuministro(resultados[0].i);
+            } else {
+                document.getElementById('suministro-error').classList.remove('hidden');
+            }
+        } else if (e.key === 'Escape') {
+            suggestionsEl.classList.add('hidden');
+        }
+    });
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.suministro-panel')) {
+            suggestionsEl.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('btn-limpiar-suministro').addEventListener('click', limpiarSuministro);
+
+    // Buscador de coordenada
     document.getElementById('btn-marcar').addEventListener('click', marcarCoordenada);
 
     document.getElementById('input-coords').addEventListener('keydown', e => {

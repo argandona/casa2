@@ -30,7 +30,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from .models import (
-    SST, Suministro, Distrito,
+    SST, Suministro, Distrito, Actividad,
     EstadoSST, EstadoSuministro, EstadoLiquidacion
 )
 

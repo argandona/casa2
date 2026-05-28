@@ -1342,7 +1342,7 @@ def mapa_suministros(request):
         'suministro', 'direccion', 'latitud', 'longitud',
         'sst__sst', 'sst__id',
         'estado_suministro__estado_suministro', 'estado_suministro__color',
-        'medidor', 'potencia', 'contacto', 'telefono',
+        'medidor', 'potencia', 'contacto', 'telefono', 'Observacion_LDS',
     )
 
     ssts_unicos = list({s['sst__id'] for s in qs})
@@ -1367,6 +1367,7 @@ def mapa_suministros(request):
                     'potencia': s['potencia'] or 'N/A',
                     'contacto': s['contacto'] or 'N/A',
                     'telefono': s['telefono'] or 'N/A',
+                    'obs_lds': s['Observacion_LDS'] or '',
                 })
         except (ValueError, TypeError):
             continue

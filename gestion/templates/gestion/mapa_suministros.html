@@ -201,6 +201,24 @@
                 <p id="suministro-error" class="text-xs text-red-500 mt-1 hidden">Suministro no encontrado.</p>
             </div>
 
+            <!-- Panel buscar por Observación LDS -->
+            <div class="suministro-panel">
+                <p class="text-sm font-semibold text-gray-700 mb-2">Filtrar por Observación LDS</p>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <input id="input-lds" type="text" placeholder="Escribe parte de la observación..."
+                           class="border border-gray-300 rounded px-2 py-1 text-sm w-72 focus:outline-none focus:border-blue-400"
+                           autocomplete="off">
+                    <button id="btn-filtrar-lds" class="px-4 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 transition">
+                        Filtrar
+                    </button>
+                    <button id="btn-limpiar-lds" class="px-4 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition hidden">
+                        Ver todos
+                    </button>
+                    <span id="lds-count" class="text-sm text-indigo-700 font-semibold hidden"></span>
+                </div>
+                <p id="lds-error" class="text-xs text-red-500 mt-1 hidden">Sin resultados para esa observación.</p>
+            </div>
+
             <!-- Panel buscar por coordenada -->
             <div class="coord-panel">
                 <p class="text-sm font-semibold text-gray-700 mb-2">Buscar coordenada</p>
@@ -306,17 +324,13 @@ function initMap() {
         bounds.extend(position);
         markers.push(marker);
 
-        // InfoWindow mejorado
+        // InfoWindow
         const infoContent = `
             <div class="info-window" style="padding: 12px; min-width: 280px; max-width: 320px;">
-                <h3>${s.suministro}</h3>
+                <h3 style="color: ${s.color};">${s.sst}</h3>
                 <div class="info-row">
-                    <span class="info-label">SST:</span>
-                    <span class="info-value" style="color: ${s.color}; font-weight: 700;">${s.sst}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Dirección:</span><br>
-                    <span class="info-value">${s.direccion}</span>
+                    <span class="info-label">Suministro:</span>
+                    <span class="info-value" style="font-weight: 700;">${s.suministro}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Estado:</span>
@@ -324,19 +338,10 @@ function initMap() {
                         ${s.estado}
                     </span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Medidor:</span>
-                    <span class="info-value">${s.medidor}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Potencia:</span>
-                    <span class="info-value">${s.potencia}</span>
-                </div>
-                ${s.contacto !== 'N/A' ? `
+                ${s.obs_lds ? `
                 <div class="info-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                    <span class="info-label">Contacto:</span>
-                    <span class="info-value">${s.contacto}</span>
-                    ${s.telefono !== 'N/A' ? `<br><span class="info-value">📞 ${s.telefono}</span>` : ''}
+                    <span class="info-label">Observación LDS:</span><br>
+                    <span class="info-value">${s.obs_lds}</span>
                 </div>
                 ` : ''}
             </div>
@@ -441,6 +446,58 @@ function generarLeyenda() {
 window.gm_authFailure = function() {
     alert('Error de autenticación con Google Maps. Verifica tu API key.');
 };
+
+// --- Filtro por Observación LDS ---
+let filtroLdsActivo = false;
+
+function aplicarFiltroLds() {
+    const q = document.getElementById('input-lds').value.trim().toLowerCase();
+    if (!q) return;
+
+    const coincidentes = suministros
+        .map((s, i) => ({ s, i }))
+        .filter(({ s }) => s.obs_lds && s.obs_lds.toLowerCase().includes(q));
+
+    const errEl = document.getElementById('lds-error');
+    if (coincidentes.length === 0) {
+        errEl.classList.remove('hidden');
+        return;
+    }
+    errEl.classList.add('hidden');
+
+    // Ocultar todos los marcadores del cluster
+    markerCluster.clearMarkers();
+    markers.forEach(m => m.setMap(null));
+
+    // Mostrar sólo los que coinciden
+    const filtrados = coincidentes.map(({ i }) => {
+        markers[i].setMap(map);
+        return markers[i];
+    });
+    markerCluster.addMarkers(filtrados);
+
+    // Ajustar bounds
+    const bounds = new google.maps.LatLngBounds();
+    coincidentes.forEach(({ s }) => bounds.extend({ lat: s.latitud, lng: s.longitud }));
+    map.fitBounds(bounds);
+
+    document.getElementById('lds-count').textContent = `${coincidentes.length} suministro(s) encontrado(s)`;
+    document.getElementById('lds-count').classList.remove('hidden');
+    document.getElementById('btn-limpiar-lds').classList.remove('hidden');
+    filtroLdsActivo = true;
+}
+
+function limpiarFiltroLds() {
+    markerCluster.clearMarkers();
+    markers.forEach(m => m.setMap(map));
+    markerCluster.addMarkers(markers);
+
+    document.getElementById('input-lds').value = '';
+    document.getElementById('btn-limpiar-lds').classList.add('hidden');
+    document.getElementById('lds-count').classList.add('hidden');
+    document.getElementById('lds-error').classList.add('hidden');
+    filtroLdsActivo = false;
+}
 
 // --- Buscador de suministro ---
 let selectedSuministroIndex = null;
@@ -589,6 +646,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-limpiar-suministro').addEventListener('click', limpiarSuministro);
+
+    // Filtro LDS
+    document.getElementById('btn-filtrar-lds').addEventListener('click', aplicarFiltroLds);
+    document.getElementById('btn-limpiar-lds').addEventListener('click', limpiarFiltroLds);
+    document.getElementById('input-lds').addEventListener('keydown', e => {
+        if (e.key === 'Enter') aplicarFiltroLds();
+    });
 
     // Buscador de coordenada
     document.getElementById('btn-marcar').addEventListener('click', marcarCoordenada);

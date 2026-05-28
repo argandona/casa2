@@ -84,32 +84,6 @@
         color: #1f2937;
     }
 
-    .coord-panel {
-        background: white;
-        padding: 14px 16px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-top: 12px;
-    }
-
-    .coord-marker-pulse {
-        animation: pulse 1s ease-out;
-    }
-
-    @keyframes pulse {
-        0%   { transform: scale(0.5); opacity: 0; }
-        60%  { transform: scale(1.2); opacity: 1; }
-        100% { transform: scale(1);   opacity: 1; }
-    }
-
-    .suministro-panel {
-        background: white;
-        padding: 14px 16px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-top: 12px;
-    }
-
     .suministro-input-wrap {
         position: relative;
         flex: 1;
@@ -184,55 +158,64 @@
                 </div>
             </div>
             
-            <!-- Panel buscar por suministro -->
-            <div class="suministro-panel">
-                <p class="text-sm font-semibold text-gray-700 mb-2">Buscar suministro</p>
-                <div class="flex flex-wrap gap-2 items-center">
-                    <div class="suministro-input-wrap">
-                        <input id="input-suministro" type="text" placeholder="Número o dirección..."
-                               class="border border-gray-300 rounded px-2 py-1 text-sm w-full focus:outline-none focus:border-blue-400"
-                               autocomplete="off">
-                        <div id="suministro-suggestions" class="suministro-suggestions hidden"></div>
+            <!-- Barra de búsquedas horizontal -->
+            <div class="mt-3 bg-white rounded-lg shadow px-4 py-3 flex flex-wrap items-start gap-x-4 gap-y-2">
+
+                <!-- Buscar suministro -->
+                <div class="flex flex-col gap-1 min-w-0">
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Suministro</span>
+                    <div class="flex gap-1 items-center">
+                        <div class="suministro-input-wrap" style="max-width:200px;">
+                            <input id="input-suministro" type="text" placeholder="Número o dirección..."
+                                   class="border border-gray-300 rounded px-2 py-1 text-sm w-full focus:outline-none focus:border-blue-400"
+                                   autocomplete="off">
+                            <div id="suministro-suggestions" class="suministro-suggestions hidden"></div>
+                        </div>
+                        <button id="btn-limpiar-suministro" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300 transition hidden">
+                            Quitar
+                        </button>
                     </div>
-                    <button id="btn-limpiar-suministro" class="px-4 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition hidden">
-                        Quitar
-                    </button>
+                    <p id="suministro-error" class="text-xs text-red-500 hidden">Suministro no encontrado.</p>
                 </div>
-                <p id="suministro-error" class="text-xs text-red-500 mt-1 hidden">Suministro no encontrado.</p>
-            </div>
 
-            <!-- Panel buscar por Observación LDS -->
-            <div class="suministro-panel">
-                <p class="text-sm font-semibold text-gray-700 mb-2">Filtrar por Observación LDS</p>
-                <div class="flex flex-wrap gap-2 items-center">
-                    <input id="input-lds" type="text" placeholder="Escribe parte de la observación..."
-                           class="border border-gray-300 rounded px-2 py-1 text-sm w-72 focus:outline-none focus:border-blue-400"
-                           autocomplete="off">
-                    <button id="btn-filtrar-lds" class="px-4 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 transition">
-                        Filtrar
-                    </button>
-                    <button id="btn-limpiar-lds" class="px-4 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition hidden">
-                        Ver todos
-                    </button>
-                    <span id="lds-count" class="text-sm text-indigo-700 font-semibold hidden"></span>
-                </div>
-                <p id="lds-error" class="text-xs text-red-500 mt-1 hidden">Sin resultados para esa observación.</p>
-            </div>
+                <div class="self-stretch w-px bg-gray-200 hidden sm:block"></div>
 
-            <!-- Panel buscar por coordenada -->
-            <div class="coord-panel">
-                <p class="text-sm font-semibold text-gray-700 mb-2">Buscar coordenada</p>
-                <div class="flex flex-wrap gap-2 items-center">
-                    <input id="input-coords" type="text" placeholder="-12.096057   -76.887220"
-                           class="border border-gray-300 rounded px-2 py-1 text-sm w-64 focus:outline-none focus:border-blue-400">
-                    <button id="btn-marcar" class="px-4 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 transition">
-                        Marcar
-                    </button>
-                    <button id="btn-limpiar-coord" class="px-4 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition hidden">
-                        Quitar
-                    </button>
+                <!-- Filtrar por Observación LDS -->
+                <div class="flex flex-col gap-1 min-w-0">
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Observación LDS</span>
+                    <div class="flex gap-1 items-center">
+                        <input id="input-lds" type="text" placeholder="Escribe parte de la observación..."
+                               class="border border-gray-300 rounded px-2 py-1 text-sm w-52 focus:outline-none focus:border-indigo-400"
+                               autocomplete="off">
+                        <button id="btn-filtrar-lds" class="px-3 py-1 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700 transition">
+                            Filtrar
+                        </button>
+                        <button id="btn-limpiar-lds" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300 transition hidden">
+                            Ver todos
+                        </button>
+                        <span id="lds-count" class="text-xs text-indigo-700 font-semibold hidden"></span>
+                    </div>
+                    <p id="lds-error" class="text-xs text-red-500 hidden">Sin resultados.</p>
                 </div>
-                <p id="coord-error" class="text-xs text-red-500 mt-1 hidden">Coordenadas inválidas.</p>
+
+                <div class="self-stretch w-px bg-gray-200 hidden sm:block"></div>
+
+                <!-- Buscar coordenada -->
+                <div class="flex flex-col gap-1 min-w-0">
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Coordenada</span>
+                    <div class="flex gap-1 items-center">
+                        <input id="input-coords" type="text" placeholder="-12.096057  -76.887220"
+                               class="border border-gray-300 rounded px-2 py-1 text-sm w-48 focus:outline-none focus:border-green-400">
+                        <button id="btn-marcar" class="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition">
+                            Marcar
+                        </button>
+                        <button id="btn-limpiar-coord" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300 transition hidden">
+                            Quitar
+                        </button>
+                    </div>
+                    <p id="coord-error" class="text-xs text-red-500 hidden">Coordenadas inválidas.</p>
+                </div>
+
             </div>
 
             <div id="map" class="w-full mt-3" style="height: calc(100vh - 260px); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);"></div>

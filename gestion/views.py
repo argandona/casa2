@@ -1333,7 +1333,8 @@ def generar_colores_distintos(n):
 
 def mapa_suministros(request):
     qs = Suministro.objects.filter(
-        estado_suministro__estado_suministro='ASIGNADO',
+        Q(estado_suministro__estado_suministro__iexact='ASIGNADO') |
+        Q(estado_suministro__estado_suministro__iexact='Pendiente'),
         latitud__isnull=False,
         longitud__isnull=False,
     ).exclude(latitud=0, longitud=0).select_related(

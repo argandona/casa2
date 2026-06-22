@@ -3,6 +3,8 @@
 # =============================================================================
 
 import json
+import os
+import tempfile
 import traceback
 import colorsys
 import unicodedata
@@ -811,13 +813,191 @@ def cargar_excel_suministros(request):
     return redirect('sst_list')
 
 
+def _importar_postes_df(df):
+    """Motor de importación de postes desde un DataFrame ya validado.
+
+    Crea/actualiza Suministros (cada poste es un Suministro con Codigo_de_poste
+    en el campo `suministro`). Devuelve un dict con los resultados. No emite
+    mensajes ni toca request: se ejecuta SOLO tras la confirmación del usuario.
+    """
+    def texto(val):
+        return str(val).strip() if pd.notna(val) else ''
+
+    def parse_fecha(val):
+        # Si la celda es fecha real, pandas trae el año; si es texto tipo
+        # "19-Jun" sin año, se reintenta agregando el año actual.
+        if not pd.notna(val):
+            return None
+        ts = pd.to_datetime(val, errors='coerce', dayfirst=True)
+        if pd.isna(ts):
+            ts = pd.to_datetime(
+                f"{str(val).strip()}-{timezone.now().year}",
+                errors='coerce', dayfirst=True,
+            )
+        return None if pd.isna(ts) else ts.date()
+
+    def parse_coords(val):
+        if not pd.notna(val):
+            return None, None
+        partes = str(val).replace(';', ',').split(',')
+        if len(partes) < 2:
+            return None, None
+        try:
+            return Decimal(partes[0].strip()), Decimal(partes[1].strip())
+        except (InvalidOperation, ValueError):
+            return None, None
+
+    actividad_default, _ = Actividad.objects.get_or_create(
+        nombre_actividad='Rehabilitación de postes'
+    )
+
+    creados = actualizados = 0
+    errores = []
+    postes_actualizados = []  # códigos de postes que ya existían (SST + Codigo_de_poste)
+
+    with transaction.atomic():
+        for index, row in df.iterrows():
+            sid = transaction.savepoint()
+            try:
+                sst_code = texto(row.get('SST'))
+                codigo_poste = texto(row.get('Codigo_de_poste'))
+                if not sst_code or not codigo_poste:
+                    transaction.savepoint_rollback(sid)
+                    errores.append(f"Fila {index + 2}: SST y Codigo_de_poste son obligatorios")
+                    continue
+
+                distrito_obj, _ = Distrito.objects.get_or_create(
+                    nombre_distrito=texto(row.get('Distrito')) or 'Sin distrito'
+                )
+
+                # --- Estados: se mapean a los existentes (ignora may/acentos); si no, se crean ---
+                estado_sst_obj = resolver_o_crear_estado(
+                    EstadoSST, 'estado', texto(row.get('estado_sst'))
+                )
+                estado_liq_obj = resolver_o_crear_estado(
+                    EstadoLiquidacion, 'estado', texto(row.get('estado_liquidacion'))
+                )
+                estado_sum_obj = resolver_o_crear_estado(
+                    EstadoSuministro, 'estado_suministro', texto(row.get('estado_poste'))
+                )
+
+                # --- Actividad ---
+                if texto(row.get('Actividad')):
+                    actividad_obj, _ = Actividad.objects.get_or_create(
+                        nombre_actividad=texto(row.get('Actividad'))
+                    )
+                else:
+                    actividad_obj = actividad_default
+
+                # --- Placa del camión -> UnidadTransporte ---
+                placa_obj = None
+                placa_str = normalizar_placa(texto(row.get('Placa_camion')))
+                if placa_str:
+                    placa_obj, _ = UnidadTransporte.objects.get_or_create(
+                        placa=placa_str,
+                        defaults={
+                            'nombre_transporte': f'Camión {placa_str}',
+                            'costo_por_hora': Decimal('0.01'),
+                            'tipo_vehiculo': 'CAMION',
+                        },
+                    )
+
+                # --- SST (cabecera) ---
+                sst, _ = SST.objects.get_or_create(
+                    sst=sst_code,
+                    defaults={
+                        'direccion': '',
+                        'distrito': distrito_obj,
+                        'estado_sst': estado_sst_obj,
+                        'estado_liquidacion': estado_liq_obj,
+                    },
+                )
+
+                # --- Monto ---
+                monto = Decimal('0.00')
+                if pd.notna(row.get('Monto')):
+                    try:
+                        monto = Decimal(str(row.get('Monto')).strip().replace(',', '.'))
+                    except (InvalidOperation, ValueError):
+                        pass
+
+                lat, lng = parse_coords(row.get('Coordenadas'))
+
+                item_raw = row.get('item')
+                item_val = int(item_raw) if pd.notna(item_raw) else 0
+
+                campos = dict(
+                    item=item_val,
+                    no_ot=sst_code,
+                    monto=monto,
+                    distrito=distrito_obj,
+                    latitud=lat,
+                    longitud=lng,
+                    fecha_programada=parse_fecha(row.get('fecha_programada')),
+                    fecha_ejecucion=parse_fecha(row.get('fecha_ejecucion')),
+                    ejecutado_por=texto(row.get('ejecutado_por')) or None,
+                    placa_camion=placa_obj,
+                    actividad=actividad_obj,
+                    estado_suministro=estado_sum_obj,
+                    observacion_contratista=texto(row.get('Observacion')) or None,
+                    tipo_suministro='ORIGINAL',
+                )
+
+                existente = Suministro.objects.filter(
+                    sst=sst, suministro=codigo_poste
+                ).first()
+
+                if existente:
+                    for attr, value in campos.items():
+                        setattr(existente, attr, value)
+                    existente.save()
+                    actualizados += 1
+                    postes_actualizados.append(f"{sst_code}/{codigo_poste}")
+                else:
+                    Suministro.objects.create(
+                        sst=sst, suministro=codigo_poste, **campos
+                    )
+                    creados += 1
+
+                # Honrar los estados de la SST que vienen en el Excel
+                # (override del cálculo automático de Suministro.save()).
+                cambios_sst = []
+                if estado_sst_obj and sst.estado_sst_id != estado_sst_obj.id:
+                    sst.estado_sst = estado_sst_obj
+                    cambios_sst.append('estado_sst')
+                if estado_liq_obj and sst.estado_liquidacion_id != estado_liq_obj.id:
+                    sst.estado_liquidacion = estado_liq_obj
+                    cambios_sst.append('estado_liquidacion')
+                if cambios_sst:
+                    sst.save(update_fields=cambios_sst)
+
+                transaction.savepoint_commit(sid)
+            except Exception as e:
+                transaction.savepoint_rollback(sid)
+                errores.append(f"Fila {index + 2}: {e}")
+
+    return {
+        'creados': creados,
+        'actualizados': actualizados,
+        'postes_actualizados': postes_actualizados,
+        'errores': errores,
+    }
+
+
+def _limpiar_temp_postes(request):
+    """Elimina el Excel temporal del paso de confirmación (si existe)."""
+    tmp_path = request.session.pop('postes_tmp_path', None)
+    request.session.pop('postes_tmp_name', None)
+    if tmp_path and os.path.exists(tmp_path):
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+
 @login_required
 def cargar_excel_postes(request):
-    """Carga masiva de postes (actividad "Rehabilitación de postes") desde Excel.
-
-    Reutiliza el modelo Suministro: cada poste es un Suministro cuyo código
-    (Codigo_de_poste) se guarda en el campo `suministro`, y cuya `actividad`
-    lo distingue de los suministros de conexiones.
+    """Paso 1: analiza el Excel de postes y pide CONFIRMACIÓN (no escribe nada).
 
     Columnas esperadas:
         item, SST, Observacion, Codigo_de_poste, Distrito, fecha_programada,
@@ -827,197 +1007,100 @@ def cargar_excel_postes(request):
     if not (request.method == 'POST' and request.FILES.get('excel_file')):
         return redirect('sst_list')
 
+    # Limpia un temporal anterior que haya quedado colgado
+    _limpiar_temp_postes(request)
+
+    archivo = request.FILES['excel_file']
     try:
-        df = pd.read_excel(request.FILES['excel_file'])
+        raw = archivo.read()
+        df = pd.read_excel(BytesIO(raw))
+        df.columns = df.columns.str.strip()
+    except Exception as e:
+        messages.error(request, f'❌ No se pudo leer el Excel: {e}')
+        return redirect('sst_list')
+
+    columnas_criticas = ['SST', 'Codigo_de_poste', 'Distrito']
+    faltantes = [c for c in columnas_criticas if c not in df.columns]
+    if faltantes:
+        messages.error(request, f'❌ Faltan columnas: {", ".join(faltantes)}')
+        return redirect('sst_list')
+
+    def texto(val):
+        return str(val).strip() if pd.notna(val) else ''
+
+    # Análisis sin escribir: clasifica nuevos vs existentes (se sobrescribirían)
+    nuevos, existentes, errores = [], [], []
+    for index, row in df.iterrows():
+        sst_code = texto(row.get('SST'))
+        codigo_poste = texto(row.get('Codigo_de_poste'))
+        if not sst_code or not codigo_poste:
+            errores.append(f"Fila {index + 2}: SST y Codigo_de_poste son obligatorios")
+            continue
+        clave = f"{sst_code}/{codigo_poste}"
+        if Suministro.objects.filter(sst__sst=sst_code, suministro=codigo_poste).exists():
+            existentes.append(clave)
+        else:
+            nuevos.append(clave)
+
+    # Guarda el archivo en un temporal para el paso de confirmación
+    fd, tmp_path = tempfile.mkstemp(suffix='.xlsx', prefix='postes_')
+    with os.fdopen(fd, 'wb') as tmp:
+        tmp.write(raw)
+    request.session['postes_tmp_path'] = tmp_path
+    request.session['postes_tmp_name'] = archivo.name
+
+    return render(request, 'gestion/confirmar_postes.html', {
+        'nombre_archivo': archivo.name,
+        'total': len(nuevos) + len(existentes),
+        'nuevos': nuevos,
+        'existentes': existentes,
+        'errores': errores,
+    })
+
+
+@login_required
+@require_POST
+def confirmar_excel_postes(request):
+    """Paso 2: ejecuta la importación confirmada (crea y SOBRESCRIBE existentes)."""
+    tmp_path = request.session.get('postes_tmp_path')
+    if not tmp_path or not os.path.exists(tmp_path):
+        messages.error(request, '❌ La carga expiró o no se encontró el archivo. Vuelve a subirlo.')
+        return redirect('sst_list')
+
+    try:
+        with open(tmp_path, 'rb') as f:
+            df = pd.read_excel(f)
         df.columns = df.columns.str.strip()
 
-        columnas_criticas = ['SST', 'Codigo_de_poste', 'Distrito']
-        faltantes = [c for c in columnas_criticas if c not in df.columns]
-        if faltantes:
-            messages.error(request, f'❌ Faltan columnas: {", ".join(faltantes)}')
-            return redirect('sst_list')
-
-        def texto(val):
-            return str(val).strip() if pd.notna(val) else ''
-
-        def parse_fecha(val):
-            # Si la celda es fecha real, pandas trae el año; si es texto tipo
-            # "19-Jun" sin año, se reintenta agregando el año actual.
-            if not pd.notna(val):
-                return None
-            ts = pd.to_datetime(val, errors='coerce', dayfirst=True)
-            if pd.isna(ts):
-                ts = pd.to_datetime(
-                    f"{str(val).strip()}-{timezone.now().year}",
-                    errors='coerce', dayfirst=True,
-                )
-            return None if pd.isna(ts) else ts.date()
-
-        def parse_coords(val):
-            if not pd.notna(val):
-                return None, None
-            partes = str(val).replace(';', ',').split(',')
-            if len(partes) < 2:
-                return None, None
-            try:
-                return Decimal(partes[0].strip()), Decimal(partes[1].strip())
-            except (InvalidOperation, ValueError):
-                return None, None
-
-        actividad_default, _ = Actividad.objects.get_or_create(
-            nombre_actividad='Rehabilitación de postes'
-        )
-
-        creados = actualizados = 0
-        errores = []
-        postes_actualizados = []  # códigos de postes que ya existían (SST + Codigo_de_poste)
-
-        with transaction.atomic():
-            for index, row in df.iterrows():
-                sid = transaction.savepoint()
-                try:
-                    sst_code = texto(row.get('SST'))
-                    codigo_poste = texto(row.get('Codigo_de_poste'))
-                    if not sst_code or not codigo_poste:
-                        transaction.savepoint_rollback(sid)
-                        errores.append(f"Fila {index + 2}: SST y Codigo_de_poste son obligatorios")
-                        continue
-
-                    distrito_obj, _ = Distrito.objects.get_or_create(
-                        nombre_distrito=texto(row.get('Distrito')) or 'Sin distrito'
-                    )
-
-                    # --- Estados: se mapean a los existentes (ignora may/acentos); si no, se crean ---
-                    estado_sst_obj = resolver_o_crear_estado(
-                        EstadoSST, 'estado', texto(row.get('estado_sst'))
-                    )
-                    estado_liq_obj = resolver_o_crear_estado(
-                        EstadoLiquidacion, 'estado', texto(row.get('estado_liquidacion'))
-                    )
-                    estado_sum_obj = resolver_o_crear_estado(
-                        EstadoSuministro, 'estado_suministro', texto(row.get('estado_poste'))
-                    )
-
-                    # --- Actividad ---
-                    if texto(row.get('Actividad')):
-                        actividad_obj, _ = Actividad.objects.get_or_create(
-                            nombre_actividad=texto(row.get('Actividad'))
-                        )
-                    else:
-                        actividad_obj = actividad_default
-
-                    # --- Placa del camión -> UnidadTransporte ---
-                    placa_obj = None
-                    placa_str = normalizar_placa(texto(row.get('Placa_camion')))
-                    if placa_str:
-                        placa_obj, _ = UnidadTransporte.objects.get_or_create(
-                            placa=placa_str,
-                            defaults={
-                                'nombre_transporte': f'Camión {placa_str}',
-                                'costo_por_hora': Decimal('0.01'),
-                                'tipo_vehiculo': 'CAMION',
-                            },
-                        )
-
-                    # --- SST (cabecera) ---
-                    sst, _ = SST.objects.get_or_create(
-                        sst=sst_code,
-                        defaults={
-                            'direccion': '',
-                            'distrito': distrito_obj,
-                            'estado_sst': estado_sst_obj,
-                            'estado_liquidacion': estado_liq_obj,
-                        },
-                    )
-
-                    # --- Monto ---
-                    monto = Decimal('0.00')
-                    if pd.notna(row.get('Monto')):
-                        try:
-                            monto = Decimal(str(row.get('Monto')).strip().replace(',', '.'))
-                        except (InvalidOperation, ValueError):
-                            pass
-
-                    lat, lng = parse_coords(row.get('Coordenadas'))
-
-                    item_raw = row.get('item')
-                    item_val = int(item_raw) if pd.notna(item_raw) else 0
-
-                    campos = dict(
-                        item=item_val,
-                        no_ot=sst_code,
-                        monto=monto,
-                        distrito=distrito_obj,
-                        latitud=lat,
-                        longitud=lng,
-                        fecha_programada=parse_fecha(row.get('fecha_programada')),
-                        fecha_ejecucion=parse_fecha(row.get('fecha_ejecucion')),
-                        ejecutado_por=texto(row.get('ejecutado_por')) or None,
-                        placa_camion=placa_obj,
-                        actividad=actividad_obj,
-                        estado_suministro=estado_sum_obj,
-                        observacion_contratista=texto(row.get('Observacion')) or None,
-                        tipo_suministro='ORIGINAL',
-                    )
-
-                    existente = Suministro.objects.filter(
-                        sst=sst, suministro=codigo_poste
-                    ).first()
-
-                    if existente:
-                        for attr, value in campos.items():
-                            setattr(existente, attr, value)
-                        existente.save()
-                        actualizados += 1
-                        postes_actualizados.append(f"{sst_code}/{codigo_poste}")
-                    else:
-                        Suministro.objects.create(
-                            sst=sst, suministro=codigo_poste, **campos
-                        )
-                        creados += 1
-
-                    # Honrar los estados de la SST que vienen en el Excel
-                    # (override del cálculo automático de Suministro.save()).
-                    cambios_sst = []
-                    if estado_sst_obj and sst.estado_sst_id != estado_sst_obj.id:
-                        sst.estado_sst = estado_sst_obj
-                        cambios_sst.append('estado_sst')
-                    if estado_liq_obj and sst.estado_liquidacion_id != estado_liq_obj.id:
-                        sst.estado_liquidacion = estado_liq_obj
-                        cambios_sst.append('estado_liquidacion')
-                    if cambios_sst:
-                        sst.save(update_fields=cambios_sst)
-
-                    transaction.savepoint_commit(sid)
-                except Exception as e:
-                    transaction.savepoint_rollback(sid)
-                    errores.append(f"Fila {index + 2}: {e}")
+        r = _importar_postes_df(df)
 
         partes = []
-        if creados:
-            partes.append(f'{creados} postes creados')
-        if actualizados:
-            partes.append(f'{actualizados} postes actualizados')
+        if r['creados']:
+            partes.append(f"{r['creados']} postes creados")
+        if r['actualizados']:
+            partes.append(f"{r['actualizados']} postes actualizados")
         if partes:
             messages.success(request, f'✅ {", ".join(partes)}.')
 
-        # Aviso: postes que ya existían (mismo SST + Codigo_de_poste) y se actualizaron
-        if postes_actualizados:
-            muestra = ", ".join(postes_actualizados[:10])
-            extra = f" y {len(postes_actualizados) - 10} más" if len(postes_actualizados) > 10 else ""
+        pa = r['postes_actualizados']
+        if pa:
+            muestra = ", ".join(pa[:10])
+            extra = f" y {len(pa) - 10} más" if len(pa) > 10 else ""
             messages.warning(
                 request,
-                f'ℹ️ {len(postes_actualizados)} poste(s) ya existían y se actualizaron '
+                f'ℹ️ {len(pa)} poste(s) ya existían y se sobrescribieron '
                 f'(SST/Código): {muestra}{extra}.'
             )
 
-        if errores:
-            messages.warning(request, f'⚠️ {len(errores)} errores encontrados.')
-            for error in errores[:5]:
+        if r['errores']:
+            messages.warning(request, f'⚠️ {len(r["errores"])} errores encontrados.')
+            for error in r['errores'][:5]:
                 messages.warning(request, error)
 
     except Exception as e:
         messages.error(request, f'❌ Error: {e}')
+    finally:
+        _limpiar_temp_postes(request)
 
     return redirect('sst_list')
 

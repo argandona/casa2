@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Confirmar carga de postes{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4">
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h1 class="text-xl font-bold text-gray-800 mb-1">Confirmar carga de postes</h1>
+        <p class="text-sm text-gray-500 mb-6">
+            Archivo: <span class="font-medium text-gray-700">{{ nombre_archivo }}</span>
+            — Aún no se ha guardado nada.
+        </p>
+
+        <!-- Resumen -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-gray-800">{{ total }}</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Total filas válidas</div>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-green-600">{{ nuevos|length }}</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Nuevos</div>
+            </div>
+            <div class="bg-amber-50 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-amber-600">{{ existentes|length }}</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Ya existen (se sobrescriben)</div>
+            </div>
+        </div>
+
+        {% if existentes %}
+        <div class="mb-5 border border-amber-200 rounded-lg overflow-hidden">
+            <div class="bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800">
+                ⚠️ Estos postes ya existen y se SOBRESCRIBIRÁN (SST/Código):
+            </div>
+            <div class="max-h-48 overflow-y-auto px-4 py-2 text-sm text-gray-700 bg-white">
+                {% for c in existentes %}<span class="inline-block bg-amber-100 text-amber-800 rounded px-2 py-0.5 m-0.5 text-xs">{{ c }}</span>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if errores %}
+        <div class="mb-5 border border-red-200 rounded-lg overflow-hidden">
+            <div class="bg-red-50 px-4 py-2 text-sm font-semibold text-red-800">
+                ❌ {{ errores|length }} fila(s) con problemas (se omitirán):
+            </div>
+            <div class="max-h-40 overflow-y-auto px-4 py-2 text-sm text-gray-700 bg-white">
+                {% for e in errores %}<div class="py-0.5">{{ e }}</div>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if total == 0 %}
+        <div class="bg-gray-50 text-gray-600 text-sm rounded-lg p-4 mb-5">
+            No hay filas válidas para importar.
+        </div>
+        {% endif %}
+
+        <!-- Acciones -->
+        <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+            {% if total > 0 %}
+            <form method="POST" action="{% url 'confirmar_excel_postes' %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2.5 rounded-lg hover:from-green-600 hover:to-green-700 shadow-sm transition-all">
+                    Confirmar e importar{% if existentes %} (sobrescribir {{ existentes|length }}){% endif %}
+                </button>
+            </form>
+            {% endif %}
+            <a href="{% url 'sst_list' %}"
+               class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all">
+                Cancelar
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

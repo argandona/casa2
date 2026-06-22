@@ -6,6 +6,7 @@ urlpatterns = [
     path('sst/', views.sst_list, name='sst_list'),
     path('sst/cargar-excel/', views.cargar_excel_suministros, name='cargar_excel_suministros'),
     path('sst/cargar-excel-postes/', views.cargar_excel_postes, name='cargar_excel_postes'),
+    path('sst/confirmar-postes/', views.confirmar_excel_postes, name='confirmar_excel_postes'),
     path('suministros/', views.suministro_list, name='suministro_list'),
     path('suministros/<int:suministro_id>/actualizar/', views.actualizar_suministro, name='actualizar_suministro'),
     path('suministro/agregar-adicional/', views.agregar_suministro_adicional, name='agregar_suministro_adicional'),

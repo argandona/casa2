@@ -842,10 +842,15 @@ def cargar_excel_postes(request):
 
         def parse_fecha(val):
             # Si la celda es fecha real, pandas trae el año; si es texto tipo
-            # "19-Jun" sin año, asume el año actual.
+            # "19-Jun" sin año, se reintenta agregando el año actual.
             if not pd.notna(val):
                 return None
             ts = pd.to_datetime(val, errors='coerce', dayfirst=True)
+            if pd.isna(ts):
+                ts = pd.to_datetime(
+                    f"{str(val).strip()}-{timezone.now().year}",
+                    errors='coerce', dayfirst=True,
+                )
             return None if pd.isna(ts) else ts.date()
 
         def parse_coords(val):

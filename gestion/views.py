@@ -870,6 +870,7 @@ def cargar_excel_postes(request):
 
         creados = actualizados = 0
         errores = []
+        postes_actualizados = []  # códigos de postes que ya existían (SST + Codigo_de_poste)
 
         with transaction.atomic():
             for index, row in df.iterrows():
@@ -968,6 +969,7 @@ def cargar_excel_postes(request):
                             setattr(existente, attr, value)
                         existente.save()
                         actualizados += 1
+                        postes_actualizados.append(f"{sst_code}/{codigo_poste}")
                     else:
                         Suministro.objects.create(
                             sst=sst, suministro=codigo_poste, **campos
@@ -998,6 +1000,17 @@ def cargar_excel_postes(request):
             partes.append(f'{actualizados} postes actualizados')
         if partes:
             messages.success(request, f'✅ {", ".join(partes)}.')
+
+        # Aviso: postes que ya existían (mismo SST + Codigo_de_poste) y se actualizaron
+        if postes_actualizados:
+            muestra = ", ".join(postes_actualizados[:10])
+            extra = f" y {len(postes_actualizados) - 10} más" if len(postes_actualizados) > 10 else ""
+            messages.warning(
+                request,
+                f'ℹ️ {len(postes_actualizados)} poste(s) ya existían y se actualizaron '
+                f'(SST/Código): {muestra}{extra}.'
+            )
+
         if errores:
             messages.warning(request, f'⚠️ {len(errores)} errores encontrados.')
             for error in errores[:5]:

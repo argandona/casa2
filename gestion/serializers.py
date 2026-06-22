@@ -39,6 +39,13 @@ class SuministroSerializer(serializers.ModelSerializer):
 
 
 class SuministroUpdateSerializer(serializers.ModelSerializer):
+    # Acepta el estado por su nombre (ej. "EJECUTADO"/"DEVUELTO") en vez del id.
+    estado_suministro = serializers.SlugRelatedField(
+        slug_field='estado_suministro',
+        queryset=EstadoSuministro.objects.all(),
+        required=False,
+    )
+
     class Meta:
         model = Suministro
         fields = [

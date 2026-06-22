@@ -72,6 +72,19 @@
             </select>
         </div>
 
+        <!-- Actividad -->
+        <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Actividad</label>
+            <select name="actividad" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
+                <option value="">Todas</option>
+                {% for actividad in actividades %}
+                <option value="{{ actividad.nombre_actividad }}" {% if actividad_filter == actividad.nombre_actividad %}selected{% endif %}>
+                    {{ actividad.nombre_actividad }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
         <!-- Obs. LDS -->
         <div class="md:col-span-2">
             <label class="block text-xs font-medium text-gray-600 mb-1">Obs. LDS</label>

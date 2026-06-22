@@ -5,6 +5,7 @@
 import json
 import traceback
 import colorsys
+import unicodedata
 from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -30,9 +31,49 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from .models import (
-    SST, Suministro, Distrito, Actividad,
+    SST, Suministro, Distrito, Actividad, UnidadTransporte,
     EstadoSST, EstadoSuministro, EstadoLiquidacion
 )
+
+
+# =============================================================================
+# HELPERS DE NORMALIZACIÓN (importación)
+# =============================================================================
+
+def _normalizar_texto(valor):
+    """Mayúsculas y sin acentos, para comparar nombres de estados."""
+    s = unicodedata.normalize('NFKD', str(valor))
+    s = ''.join(c for c in s if not unicodedata.combining(c))
+    return s.strip().upper()
+
+
+def resolver_o_crear_estado(modelo, campo, valor):
+    """Devuelve la fila del catálogo cuyo nombre coincide con `valor`
+    (ignorando mayúsculas/acentos); si no existe, la crea tal cual."""
+    valor = (valor or '').strip()
+    if not valor:
+        return None
+    objetivo = _normalizar_texto(valor)
+    for obj in modelo.objects.all():
+        if _normalizar_texto(getattr(obj, campo)) == objetivo:
+            return obj
+    return modelo.objects.create(**{campo: valor})
+
+
+def normalizar_placa(valor):
+    """Normaliza placas peruanas al formato con guion (ABC-123, AB-1234, A12-345)."""
+    valor = (valor or '').strip().upper()
+    if not valor or '-' in valor:
+        return valor or None
+    limpio = ''.join(c for c in valor if c.isalnum())
+    if len(limpio) == 6:
+        if limpio[:3].isalpha() and limpio[3:].isdigit():
+            return f"{limpio[:3]}-{limpio[3:]}"   # ABC-123
+        if limpio[:2].isalpha() and limpio[2:].isdigit():
+            return f"{limpio[:2]}-{limpio[2:]}"   # AB-1234
+        if limpio[0].isalpha() and limpio[1:].isdigit():
+            return f"{limpio[:3]}-{limpio[3:]}"   # A12-345
+    return limpio
 
 
 # =============================================================================
@@ -98,6 +139,20 @@ def dashboard(request):
     )['total'] or Decimal('0.00')
     suministros_mes = Suministro.objects.filter(created_at__gte=inicio_mes).count()
 
+    # --- Resumen por Actividad ---
+    resumen_por_actividad = list(
+        Suministro.objects.values('actividad__nombre_actividad').annotate(
+            suministros=Count('id'),
+            ejecutados=Count(
+                'id',
+                filter=Q(estado_suministro__estado_suministro__iexact='EJECUTADO'),
+            ),
+            monto=Coalesce(Sum('monto'), Value(Decimal('0.00'))),
+        ).order_by('-suministros')
+    )
+    for r in resumen_por_actividad:
+        r['actividad'] = r.pop('actividad__nombre_actividad') or 'Sin actividad'
+
     # --- Listados ---
     ultimas_sst = SST.objects.select_related(
         'distrito', 'estado_sst'
@@ -139,6 +194,8 @@ def dashboard(request):
         # Listados
         'ultimas_sst': ultimas_sst,
         'sst_en_ejecucion_list': sst_en_ejecucion_list,
+        # Resumen por actividad
+        'resumen_por_actividad': resumen_por_actividad,
     }
 
     return render(request, 'gestion/dashboard.html', context)
@@ -254,13 +311,14 @@ def suministro_list(request):
     estado_filter = request.GET.get('estado', '')
     search = request.GET.get('search', '')
     obs_lds_filter = request.GET.get('obs_lds', '')
+    actividad_filter = request.GET.get('actividad', '')
     fecha_desde = request.GET.get('fecha_desde', '')
     fecha_hasta = request.GET.get('fecha_hasta', '')
 
     todas_sst = SST.objects.select_related('distrito', 'estado_sst').order_by('sst')
 
     suministros = Suministro.objects.select_related(
-        'sst', 'distrito', 'estado_suministro'
+        'sst', 'distrito', 'estado_suministro', 'actividad'
     ).all()
 
     if sst_filter:
@@ -279,11 +337,9 @@ def suministro_list(request):
         )
     if obs_lds_filter:
         suministros = suministros.filter(Observacion_LDS__icontains=obs_lds_filter)
-        
-        
-   
+    if actividad_filter:
+        suministros = suministros.filter(actividad__nombre_actividad=actividad_filter)
 
-# ← AGREGAR ESTO:
     if fecha_desde:
         try:
             suministros = suministros.filter(
@@ -310,6 +366,7 @@ def suministro_list(request):
         cache.set('distritos', distritos, 3600)
 
     estados = EstadoSuministro.objects.all()
+    actividades = Actividad.objects.all()
     ssts = SST.objects.all()
 
     # --- Estadísticas SST ---
@@ -332,6 +389,7 @@ def suministro_list(request):
         'paginator': paginator,
         'distritos': distritos,
         'estados': estados,
+        'actividades': actividades,
         'ssts': ssts,
         'todas_sst': todas_sst,
         # Filtros activos
@@ -340,6 +398,7 @@ def suministro_list(request):
         'estado_filter': estado_filter,
         'search': search,
         'obs_lds_filter': obs_lds_filter,
+        'actividad_filter': actividad_filter,
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
         # Stats SST
@@ -753,6 +812,199 @@ def cargar_excel_suministros(request):
 
 
 @login_required
+def cargar_excel_postes(request):
+    """Carga masiva de postes (actividad "Rehabilitación de postes") desde Excel.
+
+    Reutiliza el modelo Suministro: cada poste es un Suministro cuyo código
+    (Codigo_de_poste) se guarda en el campo `suministro`, y cuya `actividad`
+    lo distingue de los suministros de conexiones.
+
+    Columnas esperadas:
+        item, SST, Observacion, Codigo_de_poste, Distrito, fecha_programada,
+        fecha_ejecucion, ejecutado_por, Monto, Coordenadas, Placa_camion,
+        Actividad, estado_liquidacion, estado_sst, estado_poste
+    """
+    if not (request.method == 'POST' and request.FILES.get('excel_file')):
+        return redirect('sst_list')
+
+    try:
+        df = pd.read_excel(request.FILES['excel_file'])
+        df.columns = df.columns.str.strip()
+
+        columnas_criticas = ['SST', 'Codigo_de_poste', 'Distrito']
+        faltantes = [c for c in columnas_criticas if c not in df.columns]
+        if faltantes:
+            messages.error(request, f'❌ Faltan columnas: {", ".join(faltantes)}')
+            return redirect('sst_list')
+
+        def texto(val):
+            return str(val).strip() if pd.notna(val) else ''
+
+        def parse_fecha(val):
+            # Si la celda es fecha real, pandas trae el año; si es texto tipo
+            # "19-Jun" sin año, asume el año actual.
+            if not pd.notna(val):
+                return None
+            ts = pd.to_datetime(val, errors='coerce', dayfirst=True)
+            return None if pd.isna(ts) else ts.date()
+
+        def parse_coords(val):
+            if not pd.notna(val):
+                return None, None
+            partes = str(val).replace(';', ',').split(',')
+            if len(partes) < 2:
+                return None, None
+            try:
+                return Decimal(partes[0].strip()), Decimal(partes[1].strip())
+            except (InvalidOperation, ValueError):
+                return None, None
+
+        actividad_default, _ = Actividad.objects.get_or_create(
+            nombre_actividad='Rehabilitación de postes'
+        )
+
+        creados = actualizados = 0
+        errores = []
+
+        with transaction.atomic():
+            for index, row in df.iterrows():
+                sid = transaction.savepoint()
+                try:
+                    sst_code = texto(row.get('SST'))
+                    codigo_poste = texto(row.get('Codigo_de_poste'))
+                    if not sst_code or not codigo_poste:
+                        transaction.savepoint_rollback(sid)
+                        errores.append(f"Fila {index + 2}: SST y Codigo_de_poste son obligatorios")
+                        continue
+
+                    distrito_obj, _ = Distrito.objects.get_or_create(
+                        nombre_distrito=texto(row.get('Distrito')) or 'Sin distrito'
+                    )
+
+                    # --- Estados: se mapean a los existentes (ignora may/acentos); si no, se crean ---
+                    estado_sst_obj = resolver_o_crear_estado(
+                        EstadoSST, 'estado', texto(row.get('estado_sst'))
+                    )
+                    estado_liq_obj = resolver_o_crear_estado(
+                        EstadoLiquidacion, 'estado', texto(row.get('estado_liquidacion'))
+                    )
+                    estado_sum_obj = resolver_o_crear_estado(
+                        EstadoSuministro, 'estado_suministro', texto(row.get('estado_poste'))
+                    )
+
+                    # --- Actividad ---
+                    if texto(row.get('Actividad')):
+                        actividad_obj, _ = Actividad.objects.get_or_create(
+                            nombre_actividad=texto(row.get('Actividad'))
+                        )
+                    else:
+                        actividad_obj = actividad_default
+
+                    # --- Placa del camión -> UnidadTransporte ---
+                    placa_obj = None
+                    placa_str = normalizar_placa(texto(row.get('Placa_camion')))
+                    if placa_str:
+                        placa_obj, _ = UnidadTransporte.objects.get_or_create(
+                            placa=placa_str,
+                            defaults={
+                                'nombre_transporte': f'Camión {placa_str}',
+                                'costo_por_hora': Decimal('0.01'),
+                                'tipo_vehiculo': 'CAMION',
+                            },
+                        )
+
+                    # --- SST (cabecera) ---
+                    sst, _ = SST.objects.get_or_create(
+                        sst=sst_code,
+                        defaults={
+                            'direccion': '',
+                            'distrito': distrito_obj,
+                            'estado_sst': estado_sst_obj,
+                            'estado_liquidacion': estado_liq_obj,
+                        },
+                    )
+
+                    # --- Monto ---
+                    monto = Decimal('0.00')
+                    if pd.notna(row.get('Monto')):
+                        try:
+                            monto = Decimal(str(row.get('Monto')).strip().replace(',', '.'))
+                        except (InvalidOperation, ValueError):
+                            pass
+
+                    lat, lng = parse_coords(row.get('Coordenadas'))
+
+                    item_raw = row.get('item')
+                    item_val = int(item_raw) if pd.notna(item_raw) else 0
+
+                    campos = dict(
+                        item=item_val,
+                        no_ot=sst_code,
+                        monto=monto,
+                        distrito=distrito_obj,
+                        latitud=lat,
+                        longitud=lng,
+                        fecha_programada=parse_fecha(row.get('fecha_programada')),
+                        fecha_ejecucion=parse_fecha(row.get('fecha_ejecucion')),
+                        ejecutado_por=texto(row.get('ejecutado_por')) or None,
+                        placa_camion=placa_obj,
+                        actividad=actividad_obj,
+                        estado_suministro=estado_sum_obj,
+                        observacion_contratista=texto(row.get('Observacion')) or None,
+                        tipo_suministro='ORIGINAL',
+                    )
+
+                    existente = Suministro.objects.filter(
+                        sst=sst, suministro=codigo_poste
+                    ).first()
+
+                    if existente:
+                        for attr, value in campos.items():
+                            setattr(existente, attr, value)
+                        existente.save()
+                        actualizados += 1
+                    else:
+                        Suministro.objects.create(
+                            sst=sst, suministro=codigo_poste, **campos
+                        )
+                        creados += 1
+
+                    # Honrar los estados de la SST que vienen en el Excel
+                    # (override del cálculo automático de Suministro.save()).
+                    cambios_sst = []
+                    if estado_sst_obj and sst.estado_sst_id != estado_sst_obj.id:
+                        sst.estado_sst = estado_sst_obj
+                        cambios_sst.append('estado_sst')
+                    if estado_liq_obj and sst.estado_liquidacion_id != estado_liq_obj.id:
+                        sst.estado_liquidacion = estado_liq_obj
+                        cambios_sst.append('estado_liquidacion')
+                    if cambios_sst:
+                        sst.save(update_fields=cambios_sst)
+
+                    transaction.savepoint_commit(sid)
+                except Exception as e:
+                    transaction.savepoint_rollback(sid)
+                    errores.append(f"Fila {index + 2}: {e}")
+
+        partes = []
+        if creados:
+            partes.append(f'{creados} postes creados')
+        if actualizados:
+            partes.append(f'{actualizados} postes actualizados')
+        if partes:
+            messages.success(request, f'✅ {", ".join(partes)}.')
+        if errores:
+            messages.warning(request, f'⚠️ {len(errores)} errores encontrados.')
+            for error in errores[:5]:
+                messages.warning(request, error)
+
+    except Exception as e:
+        messages.error(request, f'❌ Error: {e}')
+
+    return redirect('sst_list')
+
+
+@login_required
 @require_http_methods(["POST"])
 def importar_excel_suministros(request):
     """Actualización masiva de suministros desde Excel (SST + Suministro + Estado obligatorios)."""
@@ -927,11 +1179,12 @@ def descargar_excel_suministros(request):
         estado_filter = request.GET.get('estado', '')
         search = request.GET.get('search', '')
         obs_lds_filter = request.GET.get('obs_lds', '')
+        actividad_filter = request.GET.get('actividad', '')
         fecha_desde = request.GET.get('fecha_desde', '')
         fecha_hasta = request.GET.get('fecha_hasta', '')
 
         suministros = Suministro.objects.select_related(
-            'sst', 'distrito', 'estado_suministro'
+            'sst', 'distrito', 'estado_suministro', 'actividad'
         ).all()
 
         if sst_filter:
@@ -947,10 +1200,10 @@ def descargar_excel_suministros(request):
                 Q(direccion__icontains=search)
             )
         if obs_lds_filter:
-            suministros = suministros.filter(Observacion_LDS__icontains=obs_lds_filter)   
-            
-            
-            
+            suministros = suministros.filter(Observacion_LDS__icontains=obs_lds_filter)
+        if actividad_filter:
+            suministros = suministros.filter(actividad__nombre_actividad=actividad_filter)
+
         if fecha_desde:
             try:
                 fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
@@ -977,6 +1230,7 @@ def descargar_excel_suministros(request):
                 'FASE': s.fase or '',
                 'POTENCIA': s.potencia or '',
                 'ESTADO': s.estado_suministro.estado_suministro if s.estado_suministro else '',
+                'ACTIVIDAD': s.actividad.nombre_actividad if s.actividad else '',
                 'DIRECCIÓN': s.direccion,
                 'DISTRITO': s.distrito.nombre_distrito if s.distrito else '',
                 'CONTACTO': s.contacto or '',
@@ -1332,17 +1586,25 @@ def generar_colores_distintos(n):
 
 
 def mapa_suministros(request):
+    actividad_filter = request.GET.get('actividad', '')
+
     qs = Suministro.objects.filter(
         Q(estado_suministro__estado_suministro__iexact='ASIGNADO') |
         Q(estado_suministro__estado_suministro__iexact='Pendiente'),
         latitud__isnull=False,
         longitud__isnull=False,
-    ).exclude(latitud=0, longitud=0).select_related(
+    ).exclude(latitud=0, longitud=0)
+
+    if actividad_filter:
+        qs = qs.filter(actividad__nombre_actividad=actividad_filter)
+
+    qs = qs.select_related(
         'sst', 'estado_suministro'
     ).values(
         'suministro', 'direccion', 'latitud', 'longitud',
         'sst__sst', 'sst__id',
         'estado_suministro__estado_suministro', 'estado_suministro__color',
+        'actividad__nombre_actividad',
         'medidor', 'potencia', 'contacto', 'telefono', 'Observacion_LDS',
     )
 
@@ -1364,6 +1626,7 @@ def mapa_suministros(request):
                     'color': mapa_colores.get(s['sst__id'], '#3388ff'),
                     'estado': s['estado_suministro__estado_suministro'],
                     'estado_color': s['estado_suministro__color'] or '#3388ff',
+                    'actividad': s['actividad__nombre_actividad'] or 'Sin actividad',
                     'medidor': s['medidor'] or 'N/A',
                     'potencia': s['potencia'] or 'N/A',
                     'contacto': s['contacto'] or 'N/A',
@@ -1384,6 +1647,8 @@ def mapa_suministros(request):
         "suministros": json.dumps(suministros),
         "ssts_info": json.dumps(list(ssts_info.values())),
         "total": len(suministros),
+        "actividades": Actividad.objects.all(),
+        "actividad_filter": actividad_filter,
     })
 
 

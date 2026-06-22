@@ -415,7 +415,7 @@ class Suministro(models.Model):
     
     # Identificación
     item = models.PositiveIntegerField()
-    no_ot = models.CharField(max_length=20, verbose_name="N° OT")
+    no_ot = models.CharField(max_length=20, blank=True, verbose_name="N° OT")
     suministro = models.CharField(max_length=20, db_index=True, verbose_name="Suministro")
     
     # ✅ Campo monto único y correcto
@@ -434,7 +434,7 @@ class Suministro(models.Model):
     potencia = models.CharField(max_length=20, blank=True, null=True)
     
     # Ubicación
-    direccion = models.TextField()
+    direccion = models.TextField(blank=True)
     distrito = models.ForeignKey(Distrito, on_delete=models.PROTECT, null=True, blank=True, verbose_name="Distrito")
     latitud = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
     longitud = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
@@ -448,6 +448,14 @@ class Suministro(models.Model):
     # Ejecución
     fecha_ejecucion = models.DateField(null=True, blank=True)
     ejecutado_por = models.CharField(max_length=100, blank=True, null=True)
+    placa_camion = models.ForeignKey(
+        'UnidadTransporte',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='suministros',
+        verbose_name="Placa del Camión"
+    )
 
     # Contacto
     contacto = models.CharField(max_length=100, blank=True, null=True)

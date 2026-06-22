@@ -99,10 +99,11 @@ class SSTAdmin(admin.ModelAdmin):
 
 @admin.register(Suministro)
 class SuministroAdmin(admin.ModelAdmin):
-    list_display = ('suministro', 'sst', 'no_ot', 'distrito', 'estado_suministro', 'fecha_programada')
-    list_filter = ('estado_suministro', 'distrito', 'fecha_programada')
+    list_display = ('suministro', 'sst', 'no_ot', 'distrito', 'actividad', 'estado_suministro', 'fecha_programada')
+    list_filter = ('actividad', 'estado_suministro', 'distrito', 'fecha_programada')
     search_fields = ('suministro', 'no_ot', 'direccion', 'sst__sst')
     readonly_fields = ('created_at',)
+    autocomplete_fields = ('placa_camion',)
     fieldsets = (
         ('Identificación', {
             'fields': ('sst', 'item', 'monto', 'no_ot', 'suministro', 'medidor', 'marca_medidor', 'fase', 'potencia')
@@ -114,10 +115,13 @@ class SuministroAdmin(admin.ModelAdmin):
             'fields': ('fecha_primer_envio', 'fecha_programada', 'hora_inicio_programada', 'hora_fin_programada')
         }),
         ('Ejecución', {
-            'fields': ('fecha_ejecucion', 'ejecutado_por')
+            'fields': ('fecha_ejecucion', 'ejecutado_por', 'placa_camion')
         }),
         ('Contacto', {
             'fields': ('contacto', 'telefono')
+        }),
+        ('Actividad', {
+            'fields': ('actividad',)
         }),
         ('Estado y Observaciones', {
             'fields': ('estado_suministro', 'observacion_cliente', 'observacion_contratista','Observacion_LDS')
